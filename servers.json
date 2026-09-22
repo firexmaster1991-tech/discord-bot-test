@@ -1,0 +1,36 @@
+{
+  "selectedServer": "StaticPvP",
+  "servers": {
+    "StaticPvP": {
+      "name": "StaticPvP",
+      "host": "staticpvp.fun",
+      "port": 25565,
+      "version": "1.20.4",
+      "practiceMethod": "gui",
+      "practiceSlot": 4,
+      "practiceItem": "purple_bed",
+      "practiceCommand": "/practice",
+      "duelMethod": "command",
+      "duelCommand": "/duel {player}",
+      "queueMethod": "gui",
+      "queueSlot": 0,
+      "gamemodeAliases": {}
+    },
+    "StaticPVP": {
+      "name": "StaticPVP",
+      "host": "staticpvp.fun",
+      "port": 25565,
+      "version": null,
+      "practiceMethod": "command",
+      "practiceSlot": 4,
+      "practiceItem": "purple_bed",
+      "practiceCommand": "/practice",
+      "duelMethod": "command",
+      "duelCommand": "/duel {player}",
+      "queueMethod": "command",
+      "queueSlot": 0,
+      "queueCommand": "/queue {gamemode}",
+      "gamemodeAliases": {}
+    }
+  }
+}

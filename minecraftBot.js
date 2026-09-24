@@ -117,6 +117,8 @@ class MinecraftBotManager extends EventEmitter {
     this.pvpActive = false;
     this.pvpTarget = null;
     this.queueActive = false;
+    this.queueConfirmed = false;
+    this.queueStartedAt = 0;
     this.selectedGamemode = null;
     this.matchState = 'idle'; // 'idle' | 'preparing' | 'in-match'
     this.currentOpponent = null;
@@ -1295,6 +1297,8 @@ class MinecraftBotManager extends EventEmitter {
     }
 
     this.queueActive = true;
+    this.queueConfirmed = false;
+    this.queueStartedAt = Date.now();
     this.selectedGamemode = resolvedGamemode;
     this.currentProfile = getCombatProfile(resolvedGamemode);
     if (this.combatController) {
@@ -1312,12 +1316,22 @@ class MinecraftBotManager extends EventEmitter {
       console.log(`💬 Sending queue command: ${queueCmd}`);
       this.bot.chat(queueCmd);
     } else {
-      this.executeQueueAction(resolvedGamemode);
+      await this.executeQueueAction(resolvedGamemode);
+    }
+
+    // Do not claim the server accepted the queue unless the server actually
+    // confirms it through chat/match state. The command/UI action can be sent
+    // successfully while the server rejects it or the GUI click misses.
+    if (this.queueConfirmed || this.matchState === 'in-match' || this.currentOpponent) {
+      return {
+        success: true,
+        message: `📥 Queue confirmed for **${resolvedGamemode}** on **${profile.name}**. Waiting for a match...`,
+      };
     }
 
     return {
       success: true,
-      message: `📥 Entered **${resolvedGamemode}** queue on **${profile.name}**! Waiting for match confirmation...`,
+      message: `📤 Queue request sent for **${resolvedGamemode}** on **${profile.name}**. Server confirmation is still pending — check \`/status\` or Minecraft chat.`,
     };
   }
 
@@ -1392,6 +1406,8 @@ class MinecraftBotManager extends EventEmitter {
 
     // 1. Cancel active match / queue state
     this.queueActive = false;
+    this.queueConfirmed = false;
+    this.queueStartedAt = 0;
     this.pvpActive = false;
     this.matchState = 'idle';
     this.currentOpponent = null;
@@ -1551,6 +1567,8 @@ class MinecraftBotManager extends EventEmitter {
 
     this.stopPvP();
     this.queueActive = false;
+    this.queueConfirmed = false;
+    this.queueStartedAt = 0;
     this.matchState = 'idle';
     this.state = 'MATCH_END';
     this.currentOpponent = null;
@@ -1672,6 +1690,28 @@ class MinecraftBotManager extends EventEmitter {
           break;
         }
       }
+    }
+
+    // 2b. Queue confirmation: only mark the queue as real when the server
+    // explicitly indicates that the bot joined/entered/is searching.
+    const queueConfirmationPatterns = [
+      'joined queue',
+      'entered queue',
+      'queue joined',
+      'now in queue',
+      'in the queue',
+      'searching for a match',
+      'searching for opponent',
+      'waiting for opponent',
+      'queued for',
+      'queueing for',
+      'matchmaking'
+    ];
+    if (this.queueActive && queueConfirmationPatterns.some(p => lower.includes(p))) {
+      this.queueConfirmed = true;
+      this.state = 'QUEUEING';
+      this.matchState = 'preparing';
+      console.log(`✅ Queue confirmed by server: ${text}`);
     }
 
     // 3. Extract REAL opponent: ONLY from server Duels messages

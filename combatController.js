@@ -201,6 +201,9 @@ class CombatController {
     this.critCount = 0;
     this.lastAttackTime = 0;
     this.prevTargetPos = null;
+    this.targetComboHits = this.currentProfile.critComboHitsBeforeChain || 3;
+    this.targetCritHits = this.currentProfile.critChainMaxHits || 2;
+    this.healingDisengageActive = false;
 
     if (this.opponentModel) this.opponentModel.setTarget(targetEntity);
     if (this.benchmark) this.benchmark.reset();

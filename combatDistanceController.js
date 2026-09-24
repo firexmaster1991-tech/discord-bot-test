@@ -179,18 +179,21 @@ class CombatDistanceController {
     }
 
     // 3. Outspacing Zone (idealMinDistance <= dist <= idealMaxDistance, ~2.2m - 2.85m):
-    // Attacks connect while keeping opponent at maximum melee disadvantage!
+    // Default combat behavior is now permanent forward pressure. We still keep
+    // the legitimate reach envelope, but never intentionally backpedal just
+    // because the opponent is healthy. Defensive/healing callers can opt out.
     if (dist >= this.idealMinDistance && dist <= this.idealMaxDistance) {
-      // Micro-radial pacing to maintain outspacing edge
+      const aggressive = options.aggressive !== false && !options.defensive;
       const targetRetreating = Boolean(options.opponentModel && options.opponentModel.isRetreating);
+
       return {
-        forward: targetRetreating || dist > (this.idealMinDistance + this.idealMaxDistance) / 2,
-        back: !targetRetreating && dist < this.idealMinDistance + 0.15,
+        forward: aggressive || targetRetreating || dist > (this.idealMinDistance + this.idealMaxDistance) / 2,
+        back: aggressive ? false : (!targetRetreating && dist < this.idealMinDistance + 0.15),
         left: this.currentStrafeDirection === 'left',
         right: this.currentStrafeDirection === 'right',
         sprint: true,
         sneak: false,
-        mode: 'IDEAL_SPACING'
+        mode: aggressive ? 'AGGRESSIVE_PRESSURE' : 'IDEAL_SPACING'
       };
     }
 
@@ -232,6 +235,8 @@ class CombatDistanceController {
       this.movementController.setState('CHASE');
     } else if (vectors.mode === 'APPROACH') {
       this.movementController.setState('APPROACH');
+    } else if (vectors.mode === 'AGGRESSIVE_PRESSURE') {
+      this.movementController.setState('CHASE');
     } else if (vectors.mode === 'HITBOX_RECOVERY') {
       this.movementController.setState('REPOSITION');
     } else if (vectors.mode === 'ESCAPE') {

@@ -91,6 +91,9 @@ class CombatController {
     this.combatActive = false;
     this.target = null;
     this.prevTargetPos = null;
+    this.targetComboHits = this.currentProfile.critComboHitsBeforeChain || 3;
+    this.targetCritHits = this.currentProfile.critChainMaxHits || 2;
+    this.healingDisengageActive = false;
 
     // Reset aim smoothing at the start of every fight.
     if (this.movementController) {
@@ -116,8 +119,9 @@ class CombatController {
     this.lastAttackTime = 0;
     this.comboCount = 0;
     this.critCount = 0;
-    this.targetComboHits = 3;
-    this.targetCritHits = 2;
+    this.targetComboHits = this.currentProfile.critComboHitsBeforeChain || 3;
+    this.targetCritHits = this.currentProfile.critChainMaxHits || 2;
+    this.healingDisengageActive = false;
     this.isWtapping = false;
 
     // Periodic Check Timers
@@ -558,14 +562,31 @@ class CombatController {
       this.state = 'HEAL_GAPPLE';
       this.phase = 'HEALING';
       this.movementController.aimAtTarget(target, 1.30, 0.10);
-      if (this.distanceController) {
-        this.distanceController.applySpacingMovement(target, dist, { allowSprint: true, defensive: true });
+
+      // NethPot healing must create real separation first. Do not let the
+      // normal aggressive distance controller walk back into the opponent
+      // while the heal lock is active.
+      const healRetreatDistance = this.currentProfile.healDisengageDistance || 4.2;
+      if (this.gamemode && String(this.gamemode).toLowerCase().includes('nethpot') && dist < healRetreatDistance) {
+        this.movementController.setState('ESCAPE');
+        this.movementController.setControl('forward', false);
+        this.movementController.setControl('back', true);
+        this.movementController.setControl('sprint', false);
+        this.movementController.setControl('sneak', false);
+        this.movementController.setControl('left', false);
+        this.movementController.setControl('right', false);
+      } else if (this.distanceController) {
+        this.distanceController.applySpacingMovement(target, dist, { allowSprint: false, defensive: true });
       }
 
-      // Reached target HP (~15 HP)?
+      // Reached target HP (~15 HP)? Resume normal pressure and let the
+      // distance controller close the gap again.
       if (currentHealth >= this.gappleTargetHP) {
         this.healingActionLock = false;
+        this.healingDisengageActive = false;
+        this.comboCount = 0;
         this.state = 'COMBO';
+        this.phase = 'COMBO';
       }
       return;
     }
@@ -575,19 +596,41 @@ class CombatController {
     const hasHealingPotions = this.potionManager && typeof this.potionManager.hasPotion === 'function' ? this.potionManager.hasPotion('HEALING') : false;
     const hasGapples = this.potionManager && typeof this.potionManager.hasGoldenApples === 'function' ? this.potionManager.hasGoldenApples() : false;
 
+    const isNethPot = this.gamemode && String(this.gamemode).toLowerCase().includes('nethpot');
+    const healDisengageDistance = this.currentProfile.healDisengageDistance || 4.2;
+
+    // Before any NethPot heal, disengage far enough that the potion can be
+    // used without immediately eating another melee hit.
+    if (isNethPot && currentHealth <= 10 && (hasHealingPotions || hasGapples) && dist < healDisengageDistance) {
+      this.healingDisengageActive = true;
+      this.state = 'HEAL_GAPPLE';
+      this.phase = 'HEALING';
+      this.movementController.setState('ESCAPE');
+      this.movementController.setControl('forward', false);
+      this.movementController.setControl('back', true);
+      this.movementController.setControl('sprint', false);
+      this.movementController.setControl('sneak', false);
+      this.movementController.setControl('left', false);
+      this.movementController.setControl('right', false);
+      return;
+    }
+
     if (currentHealth <= 5 && hasHealingPotions && !this.potionManager.isUsingPotion) {
+      this.healingDisengageActive = false;
       this.state = 'HEAL_POTION';
       this.phase = 'HEALING';
       this.potionLock = true;
       this.potionManager.usePotion('HEALING', target).finally(() => { this.potionLock = false; });
       return;
     } else if (currentHealth <= 10 && hasGapples && !this.potionManager.isEating && !this.healingActionLock) {
+      this.healingDisengageActive = false;
       this.state = 'HEAL_GAPPLE';
       this.phase = 'HEALING';
       this.healingActionLock = true;
       this.potionManager.eatGoldenApple().finally(() => { this.healingActionLock = false; });
       return;
     } else if (currentHealth <= 10 && hasHealingPotions && !this.potionManager.isUsingPotion) {
+      this.healingDisengageActive = false;
       this.state = 'HEAL_POTION';
       this.phase = 'HEALING';
       this.potionLock = true;

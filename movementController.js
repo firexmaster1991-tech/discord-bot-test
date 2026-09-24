@@ -60,6 +60,15 @@ class CombatMovementController {
     this.prevTargetPos = null;
     this.targetVelocity = new Vec3(0, 0, 0);
 
+    // Aim smoothing / deadband. Calling bot.look() every 20 TPS with tiny
+    // prediction changes causes visible micro head jitter.
+    this.lastAimTime = 0;
+    this.lastAimYaw = null;
+    this.lastAimPitch = null;
+    this.aimUpdateIntervalMs = 50;
+    this.aimDeadbandRad = 0.018;
+    this.aimSmoothing = 0.55;
+
     // Diagnostics & logging
     this.debug = false;
   }
@@ -527,8 +536,37 @@ ERROR: Displacement stalled under active movement command
     const targetYaw = Math.atan2(-dx, -dz);
     const targetPitch = Math.atan2(dy, Math.max(0.1, groundDist));
 
-    if (typeof this.bot.look === 'function') {
-      this.bot.look(targetYaw, targetPitch, true).catch(() => {});
+    // Do not force a head rotation every combat tick. Use a small angular
+    // deadband + interpolation so the crosshair stays stable while remaining
+    // responsive enough for melee tracking.
+    const now = Date.now();
+    const wrapAngle = (angle) => Math.atan2(Math.sin(angle), Math.cos(angle));
+    const lerpAngle = (from, to, amount) => from + wrapAngle(to - from) * amount;
+
+    if (this.lastAimYaw == null || this.lastAimPitch == null) {
+      this.lastAimYaw = targetYaw;
+      this.lastAimPitch = targetPitch;
+      this.lastAimTime = now;
+      if (typeof this.bot.look === 'function') {
+        this.bot.look(targetYaw, targetPitch, true).catch(() => {});
+      }
+    } else {
+      const yawDelta = Math.abs(wrapAngle(targetYaw - this.lastAimYaw));
+      const pitchDelta = Math.abs(targetPitch - this.lastAimPitch);
+
+      if ((now - this.lastAimTime) >= this.aimUpdateIntervalMs &&
+          (yawDelta >= this.aimDeadbandRad || pitchDelta >= this.aimDeadbandRad)) {
+        const nextYaw = lerpAngle(this.lastAimYaw, targetYaw, this.aimSmoothing);
+        const nextPitch = this.lastAimPitch + ((targetPitch - this.lastAimPitch) * this.aimSmoothing);
+
+        this.lastAimYaw = nextYaw;
+        this.lastAimPitch = nextPitch;
+        this.lastAimTime = now;
+
+        if (typeof this.bot.look === 'function') {
+          this.bot.look(nextYaw, nextPitch, true).catch(() => {});
+        }
+      }
     }
 
     return { yaw: targetYaw, pitch: targetPitch, groundDist };

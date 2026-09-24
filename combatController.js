@@ -212,6 +212,7 @@ class CombatController {
     this.critController.combatVersion = this.combatVersion;
     this.critController.reset();
     this.critChainController.combatVersion = this.combatVersion;
+    this.critChainController.maxChainHits = this.currentProfile.critChainMaxHits || 4;
     this.critChainController.reset();
 
     // Release all locks
@@ -696,8 +697,19 @@ class CombatController {
     if (this.distanceController) {
       this.distanceController.applySpacingMovement(target, dist, {
         allowSprint,
-        opponentModel: this.opponentModel
+        opponentModel: this.opponentModel,
+        aggressive: !isCritActiveNow
       });
+
+      // During a crit chain, stop the normal forward-pressure controller from
+      // walking into the target and collapsing the spacing before the falling hit.
+      // Keep the target in reach while the jump/crit controller owns the attack.
+      if (isCritActiveNow && this.critChainController && this.critChainController.mode === 'CRIT_CHAIN') {
+        this.movementController.setControl('forward', dist > 3.0);
+        this.movementController.setControl('back', dist < 1.75);
+        this.movementController.setControl('sprint', false);
+        this.movementController.setControl('sneak', false);
+      }
     }
   }
 

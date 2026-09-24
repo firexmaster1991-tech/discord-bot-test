@@ -478,28 +478,32 @@ class CombatController {
     // Fires only when grounded, cooldown ready, within reach, and not in crit sequence
     // Also executes during REPOSITION (hitbox recovery) so the bot NEVER ceases attacking!
     if (onGround && dist <= 3.2 && isCooldownReady) {
-      this.lastAttackTime = now;
-      this.comboCount++;
-      if (this.state !== 'FINISH') {
-        this.state = 'COMBO';
-        this.phase = 'COMBO';
-      }
+      // Route grounded attacks through the authoritative AttackScheduler.
+      // This prevents multiple combat subsystems from independently dispatching
+      // attacks/sprint resets and keeps attack timing centralized.
+      const attacked = this.attackScheduler
+        ? this.attackScheduler.executeAttack(target, 'NORMAL_HIT', {
+            isCooldownReady: true,
+            triggerSprintReset: true
+          })
+        : false;
 
-      try {
-        this.bot.attack(target);
-        if (typeof this.bot.swingArm === 'function') {
-          this.bot.swingArm('right');
+      if (attacked) {
+        this.lastAttackTime = now;
+        this.comboCount++;
+        if (this.state !== 'FINISH') {
+          this.state = 'COMBO';
+          this.phase = 'COMBO';
         }
-        this.triggerWTap();
-      } catch (err) {
-        console.error('Combo attack dispatch error:', err.message);
-      }
 
-      // Transition to critical setup when target combo count reached
-      if (this.state !== 'FINISH' && this.comboCount >= this.targetComboHits && this.currentProfile.allowJumpCrits) {
-        this.state = 'CRIT_SETUP';
-        this.phase = 'CRITICAL_SETUP';
-        this.critCount = 0;
+        // Transition to critical setup when target combo count reached
+        if (this.state !== 'FINISH' &&
+            this.comboCount >= this.targetComboHits &&
+            this.currentProfile.allowJumpCrits) {
+          this.state = 'CRIT_SETUP';
+          this.phase = 'CRITICAL_SETUP';
+          this.critCount = 0;
+        }
       }
     }
   }

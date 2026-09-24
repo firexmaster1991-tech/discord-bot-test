@@ -92,6 +92,15 @@ class CombatController {
     this.target = null;
     this.prevTargetPos = null;
 
+    // Reset aim smoothing at the start of every fight.
+    if (this.movementController) {
+      this.movementController.prevTargetPos = null;
+      this.movementController.targetVelocity = new Vec3(0, 0, 0);
+      this.movementController.lastAimYaw = null;
+      this.movementController.lastAimPitch = null;
+      this.movementController.lastAimTime = 0;
+    }
+
     // Strict Action Locks
     this.healingActionLock = false;
     this.critLock = false;
@@ -253,6 +262,8 @@ class CombatController {
     if (this.movementController) {
       this.movementController.setState('IDLE');
       this.movementController.clearAllControls();
+      this.movementController.lastAimYaw = null;
+      this.movementController.lastAimPitch = null;
     }
     if (this.potionManager) {
       this.potionManager.potionOperationLock = false;

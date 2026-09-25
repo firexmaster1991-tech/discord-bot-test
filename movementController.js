@@ -245,8 +245,10 @@ class CombatMovementController {
         break;
 
       case 'CPVP_POSITION':
-        // Active orbiting at 2.5 - 3.8m distance
-        this.setControl('forward', options.pressForward ? true : false);
+        // Crystal PvP uses an active orbit: keep lateral movement on and
+        // periodically close distance instead of standing still.
+        this.setControl('forward', options.pressForward === true);
+
         this.setControl('back', options.maintainSpacing ? true : false);
         this.setControl('left', this.currentStrafeDirection === 'left');
         this.setControl('right', this.currentStrafeDirection === 'right');

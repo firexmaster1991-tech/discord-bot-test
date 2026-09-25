@@ -75,7 +75,7 @@ class CritChainController {
     const onGround = Boolean(this.bot && this.bot.entity && this.bot.entity.onGround);
     const vy = this.bot && this.bot.entity && this.bot.entity.velocity ? this.bot.entity.velocity.y : 0;
     const isRising = this.state === 'RISING' || vy > 0.05;
-    const isFalling = this.state === 'FALLING' || vy < -0.04;
+    const isFalling = this.state === 'FALLING' || vy < -0.01;
     const weaponName = (this.bot && this.bot.heldItem && this.bot.heldItem.name) || 'unarmed';
     const isSprinting = Boolean(this.movementController && this.movementController.activeControls && this.movementController.activeControls.sprint);
 
@@ -230,7 +230,7 @@ class CritChainController {
             this.state = 'RISING';
           } else if (Math.abs(vy) <= 0.04) {
             this.state = 'APEX';
-          } else if (vy < -0.04 || currentY < this.peakY - 0.02) {
+          } else if (vy < -0.01 || currentY < this.peakY - 0.01) {
             this.state = 'FALLING';
           }
         } else if (now - this.jumpStartTime > 250) {
@@ -243,7 +243,7 @@ class CritChainController {
           this.state = 'LAND';
         } else if (Math.abs(vy) <= 0.04) {
           this.state = 'APEX';
-        } else if (vy < -0.04 || currentY < this.peakY - 0.02) {
+        } else if (vy < -0.01 || currentY < this.peakY - 0.01) {
           this.state = 'FALLING';
         }
         if (this.state !== 'FALLING') break;
@@ -251,7 +251,7 @@ class CritChainController {
       case 'APEX':
         if (onGround) {
           this.state = 'LAND';
-        } else if (vy < -0.04 || currentY < this.peakY - 0.02) {
+        } else if (vy < -0.01 || currentY < this.peakY - 0.01) {
           this.state = 'FALLING';
         }
         if (this.state !== 'FALLING') break;

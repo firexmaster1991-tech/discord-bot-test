@@ -740,28 +740,18 @@ class CombatController {
 
     this.movementController.aimAtTarget(aimTarget, aimHeight, 0.12);
 
-    // 8. DECOUPLED DISTANCE & MOVEMENT CONTROL
-    if (dist > (this.currentProfile.chaseDistance || 3.5)) {
-      this.isWtapping = false;
-    }
-    const allowSprint = (!this.isWtapping || dist > 3.4) && !isCritActiveNow && this.phase !== 'CRITICAL_ATTACK';
-    if (this.distanceController) {
-      this.distanceController.applySpacingMovement(target, dist, {
-        allowSprint,
-        opponentModel: this.opponentModel,
-        aggressive: !isCritActiveNow
-      });
-
-      // Keep target in reach and maintain forward trajectory during airborne critical hits
-      // Strictly prevent mid-air backpedaling or freezing that causes combat fluctuation!
-      if (isCritActiveNow) {
-        this.movementController.setControl('forward', dist >= 1.0);
-        this.movementController.setControl('back', false);
-        if (this.combatVersion === 'modern') {
-          this.movementController.setControl('sprint', false);
-        }
-        this.movementController.setControl('sneak', false);
+    // 8. PROFILE-OWNED MOVEMENT
+    // Each dedicated profile owns its movement decision. Applying the global
+    // distance controller a second time here was overwriting profile states
+    // (especially healing, Crystal positioning, Mace launches and crit setup).
+    // Keep only the emergency airborne-crit constraint here.
+    if (isCritActiveNow && this.movementController) {
+      this.movementController.setControl('forward', dist >= 1.0);
+      this.movementController.setControl('back', false);
+      if (this.combatVersion === 'modern') {
+        this.movementController.setControl('sprint', false);
       }
+      this.movementController.setControl('sneak', false);
     }
     this.prevDistance = dist;
   }

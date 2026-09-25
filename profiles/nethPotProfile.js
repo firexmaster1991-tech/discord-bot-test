@@ -182,7 +182,7 @@ class NethPotProfile extends BaseCombatProfile {
       if (onGround) {
         this.critSequence = 'GROUND';
         if (this.movementController) this.movementController.setControl('sprint', true);
-      } else if (dist <= 3.25 && (isCooldownReady || (now - this.lastCritTime >= 520))) {
+      } else if (dist <= 3.25 && isCooldownReady) {
         // EXECUTE FALLING CRITICAL HIT!
         this.attackScheduler.executeAttack(target, 'CRITICAL', { force: true });
         this.critSequence = 'LAND';
@@ -217,7 +217,7 @@ class NethPotProfile extends BaseCombatProfile {
     // 5. ATTACK & COMBO LOGIC
     if (this.critSequence === 'GROUND' && onGround) {
       // Opportunity for Critical Jump: Target in range, attack ready (or >= 250ms elapsed)
-      if (dist >= 1.2 && dist <= 3.25 && (isCooldownReady || (now - this.lastCritTime >= 250))) {
+      if (dist >= 1.2 && dist <= 3.25 && isCooldownReady) {
         this.critSequence = 'JUMP';
         this.jumpStartTime = now;
         this.peakY = currentY;

@@ -714,21 +714,18 @@ class CombatController {
     this.phase = this.evaluatePhase(dist, currentHealth, targetHealth);
 
     const activeProf = this.profileManager ? this.profileManager.getActiveProfile() : null;
-    const isSpecializedProfile = activeProf && ['CRYSTAL', 'MACE', 'ELYTRA_MACE', 'SPEAR_ELYTRA', 'SPEAR_MACE'].includes(activeProf.name);
 
-    if (isSpecializedProfile) {
+    // Every gamemode is driven by its dedicated profile. Do not split Sword/NethPot
+    // into the legacy generic scheduler: doing so bypasses their profile state
+    // machines and makes profile-specific movement/attack logic inconsistent.
+    if (activeProf && this.profileManager) {
       this.profileManager.update(target, dist, currentHealth, targetHealth, isCooldownReady, now);
       if (activeProf.currentState) {
         this.phase = activeProf.currentState;
       }
     } else {
-      // General Sword / NethPot combat execution with central AttackScheduler
+      // Safe fallback only if the profile manager is unavailable.
       this.scheduleAttack(target, dist, isCooldownReady, now);
-      if (activeProf) {
-        activeProf.target = target;
-        activeProf.currentState = this.phase;
-        activeProf.state = this.phase;
-      }
     }
 
     // 7. PREDICTIVE CROSSHAIR AIMING

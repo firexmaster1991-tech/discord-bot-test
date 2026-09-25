@@ -33,6 +33,7 @@ class OpponentModel {
     this.isSprinting = false;
     this.isBlocking = false;
     this.isRetreating = false;
+    this.isChasing = false;
     this.isStrafingLeft = false;
     this.isStrafingRight = false;
 
@@ -74,6 +75,7 @@ class OpponentModel {
     this.velocity = new Vec3(0, 0, 0);
     this.acceleration = new Vec3(0, 0, 0);
     this.approximateHealth = 20;
+    this.isChasing = false;
     this.history.positions = [];
     this.history.velocities = [];
     this.history.attacks = [];
@@ -105,7 +107,12 @@ class OpponentModel {
 
     // 1. Calculate Velocity & Acceleration
     if (this.prevPosition) {
-      this.velocity = currentPos.minus(this.prevPosition);
+      const delta = currentPos.minus(this.prevPosition);
+      if (delta.norm() > 0.0001 || !target.velocity) {
+        this.velocity = delta;
+      } else {
+        this.velocity = target.velocity.clone();
+      }
       this.acceleration = this.velocity.minus(this.prevVelocity);
     } else {
       this.velocity = target.velocity ? target.velocity.clone() : new Vec3(0, 0, 0);
@@ -134,8 +141,10 @@ class OpponentModel {
     if (toTargetDist > 0.01) {
       const dirToTarget = toTargetHoriz.scaled(1 / toTargetDist);
       // Dot product: > 0 means opponent is moving away (retreating)
+      // < -0.04 means opponent is moving towards bot (chasing)
       const radialVel = (this.velocity.x * dirToTarget.x + this.velocity.z * dirToTarget.z);
       this.isRetreating = radialVel > 0.06;
+      this.isChasing = radialVel < -0.04 || (toTargetDist < 6.0 && this.isSprinting && !this.isRetreating);
 
       // Cross product (2D): lateral strafe direction
       const lateralVel = (dirToTarget.x * this.velocity.z - dirToTarget.z * this.velocity.x);
@@ -291,6 +300,7 @@ class OpponentModel {
       isSprinting: this.isSprinting,
       isBlocking: this.isBlocking,
       isRetreating: this.isRetreating,
+      isChasing: this.isChasing,
       isStrafingLeft: this.isStrafingLeft,
       isStrafingRight: this.isStrafingRight,
       lastAttackTime: this.lastAttackTime,

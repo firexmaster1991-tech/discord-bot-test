@@ -207,7 +207,7 @@ test('FIX 4: Strength & Speed Effect Gating + 2-Second Post-Expiry Delay', async
   assert.strictEqual(pim.isStrengthActive(), false, 'Strength has run off');
 
   // 5. Test 2-second delay rule:
-  const now = Date.now();
+  const now = pim.strengthExpiredAt;
   // Immediately after running off (< 2000ms): MUST NOT THROW!
   assert.strictEqual(pim.canThrowStrength(now + 500), false, 'Must NOT throw after 0.5s of expiry (waiting for 2s delay)');
   assert.strictEqual(pim.canThrowStrength(now + 1500), false, 'Must NOT throw after 1.5s of expiry (waiting for 2s delay)');

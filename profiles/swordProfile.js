@@ -61,17 +61,42 @@ class SwordProfile extends BaseCombatProfile {
     const vy = this.bot.entity.velocity ? this.bot.entity.velocity.y : 0;
 
     // 1. Survival Check: Golden Apple / Health Pot at <= 10 HP
-    if (this.potionManager && this.potionManager.healingActionLock) {
+    const isHealing = this.potionManager && (this.potionManager.healingActionLock || this.potionManager.isEating || this.potionManager.isUsingPotion);
+    if (isHealing) {
       if (this.stateMachine) this.stateMachine.transitionTo('HEAL');
+      if (this.movementController) {
+        this.movementController.aimAwayFromTarget(target);
+        this.movementController.setState('CHASE');
+        this.movementController.setControl('forward', true);
+        this.movementController.setControl('back', false);
+        this.movementController.setControl('sprint', true);
+        this.movementController.setControl('sneak', false);
+      }
       this.recordMeaningfulAction('HEAL');
       return;
     }
     if (currentHealth <= 10 && this.potionManager) {
       if (this.potionManager.hasPotion('HEALING')) {
+        if (this.movementController) {
+          this.movementController.aimAwayFromTarget(target);
+          this.movementController.setState('CHASE');
+          this.movementController.setControl('forward', true);
+          this.movementController.setControl('back', false);
+          this.movementController.setControl('sprint', true);
+          this.movementController.setControl('sneak', false);
+        }
         this.potionManager.usePotion('HEALING', target);
         this.recordMeaningfulAction('HEAL_POTION');
         return;
       } else if (this.potionManager.hasGoldenApples() && !this.potionManager.isEating) {
+        if (this.movementController) {
+          this.movementController.aimAwayFromTarget(target);
+          this.movementController.setState('CHASE');
+          this.movementController.setControl('forward', true);
+          this.movementController.setControl('back', false);
+          this.movementController.setControl('sprint', true);
+          this.movementController.setControl('sneak', false);
+        }
         this.potionManager.eatGoldenApple();
         this.recordMeaningfulAction('HEAL_GAPPLE');
         return;

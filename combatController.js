@@ -123,6 +123,7 @@ class CombatController {
     this.targetCritHits = this.currentProfile.critChainMaxHits || 2;
     this.healingDisengageActive = false;
     this.isWtapping = false;
+    this.prevDistance = null;
 
     // Periodic Check Timers
     this.lastTotemCheck = 0;
@@ -560,28 +561,44 @@ class CombatController {
       }
     }
 
-    // 1. HEALING ACTION LOCK: Active eating in progress!
-    // Maintain controlled defensive spacing and target tracking. FORBID weapon swaps & attacks!
-    if (this.healingActionLock || (this.potionManager && this.potionManager.isEating)) {
-      this.state = 'HEAL_GAPPLE';
-      this.phase = 'HEALING';
-      this.movementController.aimAtTarget(target, 1.30, 0.10);
+    // 1. HEALING ACTION LOCK: Active eating / potion in progress!
+    // Turn back to enemy, press W + Sprint away, actively run away if enemy is chasing! FORBID weapon swaps & attacks!
+    const isHealing = this.healingActionLock ||
+                      (this.potionManager && (this.potionManager.isEating || this.potionManager.isUsingPotion)) ||
+                      this.potionLock;
 
-      // NethPot healing must create real separation first. Do not let the
-      // normal aggressive distance controller walk back into the opponent
-      // while the heal lock is active.
-      const healRetreatDistance = this.currentProfile.healDisengageDistance || 4.2;
-      if (this.gamemode && String(this.gamemode).toLowerCase().includes('nethpot') && dist < healRetreatDistance) {
-        this.movementController.setState('ESCAPE');
-        this.movementController.setControl('forward', false);
-        this.movementController.setControl('back', true);
-        this.movementController.setControl('sprint', false);
-        this.movementController.setControl('sneak', false);
-        this.movementController.setControl('left', false);
-        this.movementController.setControl('right', false);
-      } else if (this.distanceController) {
-        this.distanceController.applySpacingMovement(target, dist, { allowSprint: false, defensive: true });
+    if (isHealing) {
+      this.state = (this.potionManager && this.potionManager.isUsingPotion) ? 'HEAL_POTION' : 'HEAL_GAPPLE';
+      this.phase = 'HEALING';
+
+      // Turn back to enemy (aim away from target into open escape path)
+      this.movementController.aimAwayFromTarget(target);
+
+      // Check if enemy is actively chasing the bot:
+      // Distance closing, opponent model detecting chase, or opponent within pursuit range (< 6m)
+      const enemyClosing = (this.prevDistance != null && (this.prevDistance - dist) > 0.02);
+      const isChasing = (this.opponentModel && this.opponentModel.isChasing) ||
+                        enemyClosing ||
+                        dist < 6.0;
+
+      // STRICT RULE: Press W (forward: true) and SPRINT away! NEVER press S (back: false)!
+      this.movementController.setState('CHASE');
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
+      this.movementController.setControl('sprint', true);
+      this.movementController.setControl('sneak', false);
+      this.movementController.setControl('left', false);
+      this.movementController.setControl('right', false);
+
+      // If enemy is chasing or bot encounters a 1-block obstacle, jump-sprint away
+      const onGround = Boolean(this.bot.entity.onGround);
+      if (this.bot.entity.isCollidedHorizontally) {
+        this.movementController.requestJump(true);
+      } else if (isChasing && onGround && dist < 5.0) {
+        this.movementController.requestJump(false);
       }
+
+      this.prevDistance = dist;
 
       // Reached target HP (~15 HP)? Resume normal pressure and let the
       // distance controller close the gap again.
@@ -603,19 +620,24 @@ class CombatController {
     const isNethPot = this.gamemode && String(this.gamemode).toLowerCase().includes('nethpot');
     const healDisengageDistance = this.currentProfile.healDisengageDistance || 4.2;
 
-    // Before any NethPot heal, disengage far enough that the potion can be
-    // used without immediately eating another melee hit.
-    if (isNethPot && currentHealth <= 10 && (hasHealingPotions || hasGapples) && dist < healDisengageDistance) {
+    // Disengage safely before splash potting: if in NethPot without gapples and too close,
+    // turn back to enemy, press W + Sprint to create safe distance without eating melee hits
+    if (isNethPot && currentHealth <= 10 && hasHealingPotions && !hasGapples && dist < healDisengageDistance) {
       this.healingDisengageActive = true;
-      this.state = 'HEAL_GAPPLE';
+      this.state = 'HEAL_POTION';
       this.phase = 'HEALING';
-      this.movementController.setState('ESCAPE');
-      this.movementController.setControl('forward', false);
-      this.movementController.setControl('back', true);
-      this.movementController.setControl('sprint', false);
+      this.movementController.aimAwayFromTarget(target);
+      this.movementController.setState('CHASE');
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
+      this.movementController.setControl('sprint', true);
       this.movementController.setControl('sneak', false);
       this.movementController.setControl('left', false);
       this.movementController.setControl('right', false);
+      if (this.bot.entity.isCollidedHorizontally) {
+        this.movementController.requestJump(true);
+      }
+      this.prevDistance = dist;
       return;
     }
 
@@ -624,21 +646,48 @@ class CombatController {
       this.state = 'HEAL_POTION';
       this.phase = 'HEALING';
       this.potionLock = true;
+      this.movementController.aimAwayFromTarget(target);
+      this.movementController.setState('CHASE');
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
+      this.movementController.setControl('sprint', true);
+      this.movementController.setControl('sneak', false);
+      this.movementController.setControl('left', false);
+      this.movementController.setControl('right', false);
       this.potionManager.usePotion('HEALING', target).finally(() => { this.potionLock = false; });
+      this.prevDistance = dist;
       return;
     } else if (currentHealth <= 10 && hasGapples && !this.potionManager.isEating && !this.healingActionLock) {
       this.healingDisengageActive = false;
       this.state = 'HEAL_GAPPLE';
       this.phase = 'HEALING';
       this.healingActionLock = true;
+      this.movementController.aimAwayFromTarget(target);
+      this.movementController.setState('CHASE');
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
+      this.movementController.setControl('sprint', true);
+      this.movementController.setControl('sneak', false);
+      this.movementController.setControl('left', false);
+      this.movementController.setControl('right', false);
       this.potionManager.eatGoldenApple().finally(() => { this.healingActionLock = false; });
+      this.prevDistance = dist;
       return;
     } else if (currentHealth <= 10 && hasHealingPotions && !this.potionManager.isUsingPotion) {
       this.healingDisengageActive = false;
       this.state = 'HEAL_POTION';
       this.phase = 'HEALING';
       this.potionLock = true;
+      this.movementController.aimAwayFromTarget(target);
+      this.movementController.setState('CHASE');
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
+      this.movementController.setControl('sprint', true);
+      this.movementController.setControl('sneak', false);
+      this.movementController.setControl('left', false);
+      this.movementController.setControl('right', false);
       this.potionManager.usePotion('HEALING', target).finally(() => { this.potionLock = false; });
+      this.prevDistance = dist;
       return;
     }
 
@@ -714,6 +763,7 @@ class CombatController {
         this.movementController.setControl('sneak', false);
       }
     }
+    this.prevDistance = dist;
   }
 
   /**

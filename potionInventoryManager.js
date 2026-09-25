@@ -342,9 +342,8 @@ class PotionInventoryManager {
   /**
    * Checks if Strength is currently in effect on the bot.
    */
-  isStrengthActive() {
+  isStrengthActive(now = Date.now()) {
     const active = this.hasActiveEffect(5);
-    const now = Date.now();
     if (!active && this.wasStrengthActive) {
       this.strengthExpiredAt = now;
       this.wasStrengthActive = false;
@@ -358,9 +357,8 @@ class PotionInventoryManager {
   /**
    * Checks if Speed is currently in effect on the bot.
    */
-  isSpeedActive() {
+  isSpeedActive(now = Date.now()) {
     const active = this.hasActiveEffect(1);
-    const now = Date.now();
     if (!active && this.wasSpeedActive) {
       this.speedExpiredAt = now;
       this.wasSpeedActive = false;

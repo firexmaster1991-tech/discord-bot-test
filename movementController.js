@@ -355,6 +355,27 @@ class CombatMovementController {
   }
 
   /**
+   * Arena Boundary & Wall Awareness for an Absolute Yaw:
+   * Checks if a solid wall exists along the ray in the given yaw direction.
+   */
+  checkWallAtYaw(yaw, distance = 2.0) {
+    if (!this.bot || !this.bot.entity || !this.bot.entity.position) return false;
+    const pos = this.bot.entity.position;
+    const dirX = -Math.sin(yaw);
+    const dirZ = -Math.cos(yaw);
+
+    for (let d = 0.8; d <= distance; d += 0.6) {
+      const footPos = pos.offset(dirX * d, 0.2, dirZ * d).floored();
+      const torsoPos = pos.offset(dirX * d, 1.2, dirZ * d).floored();
+      if (this.isSolidBlock(footPos) || this.isSolidBlock(torsoPos)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Detects if a solid wall is directly behind the bot (within specified distance).
    * Used to prevent blind backward retreats into corners.
    */
@@ -570,6 +591,70 @@ ERROR: Displacement stalled under active movement command
     }
 
     return { yaw: targetYaw, pitch: targetPitch, groundDist };
+  }
+
+  /**
+   * Aim Directly Away From Target (Back to Enemy Escape Yaw):
+   * Calculates the exact vector pointing away from target with obstacle deflection.
+   * Turns the bot's back to the opponent so pressing W and sprinting moves away from them.
+   */
+  aimAwayFromTarget(targetEntity, options = {}) {
+    if (!this.bot || !this.bot.entity || !targetEntity || !targetEntity.position) return;
+
+    const botPos = this.bot.entity.position;
+    const targetPos = targetEntity.position;
+
+    // Vector pointing FROM target TO bot (directly away from target)
+    const dx = botPos.x - targetPos.x;
+    const dz = botPos.z - targetPos.z;
+
+    let escapeYaw = (Math.abs(dx) < 0.001 && Math.abs(dz) < 0.001)
+      ? (this.bot.entity.yaw || 0)
+      : Math.atan2(-dx, -dz);
+
+    // Wall & Obstacle Avoidance: If escape direction is blocked by a wall, deflect toward open space
+    if (typeof this.checkWallAtYaw === 'function') {
+      const wallAhead = this.checkWallAtYaw(escapeYaw, 2.0);
+      if (wallAhead) {
+        const wallLeft45 = this.checkWallAtYaw(escapeYaw + Math.PI / 4, 2.0);
+        const wallRight45 = this.checkWallAtYaw(escapeYaw - Math.PI / 4, 2.0);
+        if (!wallLeft45) {
+          escapeYaw += Math.PI / 4;
+        } else if (!wallRight45) {
+          escapeYaw -= Math.PI / 4;
+        } else {
+          const wallLeft90 = this.checkWallAtYaw(escapeYaw + Math.PI / 2, 2.0);
+          if (!wallLeft90) escapeYaw += Math.PI / 2;
+          else escapeYaw -= Math.PI / 2;
+        }
+      }
+    }
+
+    // Platform edge / void check if applicable
+    if (options.preventVoidDrops && typeof this.checkEdgeAhead === 'function' && this.checkEdgeAhead(escapeYaw)) {
+      escapeYaw += Math.PI / 2;
+    }
+
+    const now = Date.now();
+    this.lastAimYaw = escapeYaw;
+    this.lastAimPitch = 0;
+    this.lastAimTime = now;
+
+    if (this.bot.entity) {
+      this.bot.entity.yaw = escapeYaw;
+      this.bot.entity.pitch = 0;
+    }
+
+    if (typeof this.bot.look === 'function') {
+      try {
+        const lookPromise = this.bot.look(escapeYaw, 0, true);
+        if (lookPromise && typeof lookPromise.catch === 'function') {
+          lookPromise.catch(() => {});
+        }
+      } catch {}
+    }
+
+    return { yaw: escapeYaw, pitch: 0 };
   }
 
   /**

@@ -24,7 +24,7 @@ class CrystalPvPController {
     this.state = 'CPVP_SEARCH';
     this.actionLock = false;
     this.actionStartTime = 0;
-    this.actionTimeoutMs = 250; // Strict 250ms action timeout to prevent freezes
+    this.actionTimeoutMs = 180; // Strict 250ms action timeout to prevent freezes
     this.lastActionTime = 0;
     this.lastDetonationTime = 0;
 
@@ -296,11 +296,17 @@ class CrystalPvPController {
       return;
     } else {
       this.state = 'CPVP_POSITION';
-      if (this.movementController) this.movementController.setState('CPVP_POSITION');
+      if (this.movementController) {
+        this.movementController.setState('CPVP_POSITION', {
+          pressForward: dist > 3.25,
+          maintainSpacing: false
+        });
+      }
     }
 
     // Cooldown gate between placement cycles (~180ms)
-    if (now - this.lastActionTime < 180) return;
+    const actionInterval = 110;
+    if (now - this.lastActionTime < actionInterval) return;
 
     const inventory = this.bot.inventory;
     if (!inventory) return;

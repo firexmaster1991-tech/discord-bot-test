@@ -16,12 +16,12 @@ class SwordProfile extends BaseCombatProfile {
     super('SWORD', context);
     this.comboCount = 0;
     this.isAirborneCrit = false;
-    this.critCooldown = 4500; // Crits are secondary and infrequent
+    this.critCooldown = 1800; // Occasional crits without interrupting grounded pressure
     this.lastCritTime = 0;
 
     // Tactical ranges
-    this.idealMinRange = 2.4;
-    this.idealMaxRange = 2.85;
+    this.idealMinRange = 2.25;
+    this.idealMaxRange = 3.0;
     this.allowJumpCrits = false; // Primary style is grounded combo pressure
   }
 

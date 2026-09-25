@@ -78,8 +78,9 @@ class CombatMovementController {
    */
   setControl(controlName, value) {
     const boolValue = Boolean(value);
-    if (this.activeControls[controlName] === boolValue) return;
-
+    // Keep the local cache and Mineflayer's actual control state synchronized.
+    // Other systems (pathfinder/clearControlStates) can clear Mineflayer directly,
+    // so a cached "true" must not prevent us from re-sending the input.
     this.activeControls[controlName] = boolValue;
     if (this.bot && typeof this.bot.setControlState === 'function') {
       try {

@@ -12,6 +12,7 @@ process.stderr.write = function(chunk, ...args) {
 };
 
 const mineflayer = require('mineflayer');
+const customSwordPvP = require('@nxg-org/mineflayer-custom-pvp');
 const { EventEmitter } = require('events');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { Vec3 } = require('vec3');
@@ -1900,6 +1901,9 @@ class MinecraftBotManager extends EventEmitter {
       });
 
       this.bot.loadPlugin(pathfinder);
+      // Custom Sword PvP is loaded globally but activated/configured only by the SWORD profile.
+      // Crystal/NethPot/Mace/etc. continue using their existing isolated controllers.
+      this.bot.loadPlugin(customSwordPvP);
 
       this.bot.once('spawn', () => {
         this.status = 'online';
@@ -1918,6 +1922,29 @@ class MinecraftBotManager extends EventEmitter {
         defaultMove.allow1by1towers = false;
         defaultMove.sprint = true;
         this.bot.pathfinder.setMovements(defaultMove);
+
+        // Configure the optional SwordPvP plugin with non-packet, non-blatant settings.
+        // We deliberately do NOT enable packet criticals or blatant shield modes.
+        if (this.bot.swordpvp && this.bot.swordpvp.options) {
+          const opts = this.bot.swordpvp.options;
+          if (opts.critConfig) {
+            opts.critConfig.enabled = true;
+            opts.critConfig.mode = 'reactive';
+          }
+          if (opts.strafeConfig) {
+            opts.strafeConfig.enabled = true;
+            if (opts.strafeConfig.mode) opts.strafeConfig.mode.mode = 'intelligent';
+          }
+          if (opts.tapConfig) {
+            opts.tapConfig.enabled = true;
+            opts.tapConfig.mode = 'wtap';
+          }
+          if (opts.rotateConfig) {
+            opts.rotateConfig.smooth = true;
+            opts.rotateConfig.mode = 'constant';
+          }
+          console.log('🗡️ [SWORD PVP] Custom SwordPvP loaded (reactive crits, intelligent strafe, W-tap, smooth aim).');
+        }
 
         console.log(`✅ Minecraft bot spawned in server "${profile.name}" (${host}:${port}) successfully.`);
         this.emit('spawn');

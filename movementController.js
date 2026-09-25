@@ -65,9 +65,9 @@ class CombatMovementController {
     this.lastAimTime = 0;
     this.lastAimYaw = null;
     this.lastAimPitch = null;
-    this.aimUpdateIntervalMs = 50;
-    this.aimDeadbandRad = 0.018;
-    this.aimSmoothing = 0.55;
+    this.aimUpdateIntervalMs = 33;
+    this.aimDeadbandRad = 0.008;
+    this.aimSmoothing = 0.72;
 
     // Diagnostics & logging
     this.debug = false;
@@ -127,7 +127,13 @@ class CombatMovementController {
    */
   setState(newState, options = {}) {
     const normalized = this.normalizeState(newState);
-    if (this.currentState === normalized && !options.force) return;
+    if (this.currentState === normalized && !options.force) {
+      // A profile may update movement parameters without changing the state
+      // (for example CPVP_POSITION pressForward/spacing). Re-apply the
+      // current state's controls so those tactical changes are not ignored.
+      this.applyStateControls(options);
+      return;
+    }
 
     this.previousState = this.currentState;
     this.currentState = normalized;
@@ -547,9 +553,16 @@ ERROR: Displacement stalled under active movement command
     }
     this.prevTargetPos = targetPos.clone();
 
-    const predX = targetPos.x + (this.targetVelocity.x * (lookaheadSeconds * 20));
-    const predY = targetPos.y + aimHeight + (this.targetVelocity.y * 0.5);
-    const predZ = targetPos.z + (this.targetVelocity.z * (lookaheadSeconds * 20));
+    // Velocity is measured in blocks per physics tick. Clamp prediction so a
+    // sudden teleport/knockback packet cannot make the head snap wildly.
+    const predictionTicks = Math.max(0, Math.min(lookaheadSeconds * 20, 3.0));
+    const predictedVX = Math.max(-0.45, Math.min(0.45, this.targetVelocity.x));
+    const predictedVY = Math.max(-0.45, Math.min(0.45, this.targetVelocity.y));
+    const predictedVZ = Math.max(-0.45, Math.min(0.45, this.targetVelocity.z));
+
+    const predX = targetPos.x + (predictedVX * predictionTicks);
+    const predY = targetPos.y + aimHeight + (predictedVY * 0.5);
+    const predZ = targetPos.z + (predictedVZ * predictionTicks);
 
     const dx = predX - botPos.x;
     const dy = predY - (botPos.y + (this.bot.entity.eyeHeight || 1.6));

@@ -189,18 +189,21 @@ class ClassicProfile extends BaseCombatProfile {
 class CrystalProfile extends BaseCombatProfile {
   constructor() {
     super('CrystalPVP');
-    this.idealMinRange = 2.4;
-    this.idealMaxRange = 4.2;
-    this.chaseDistance = 4.5;
+    this.idealMinRange = 2.6;
+    this.idealMaxRange = 3.8;
+    this.chaseDistance = 4.4;
     this.allowJumpCrits = false;
-    this.healThresholdHP = 14;
+    this.healThresholdHP = 12;
+    this.crystalOrbitForwardDistance = 3.25;
+    this.crystalActionIntervalMs = 110;
+    this.crystalFinishHP = 7;
   }
 
   decideMovementState(dist, health, target, isCollidedHorizontally) {
     if (health != null && health <= this.healThresholdHP) return 'RETREAT';
     if (dist > this.chaseDistance) return 'CHASE';
     if (dist < this.idealMinRange) return 'CPVP_POSITION';
-    return 'REPOSITION';
+    return dist > this.crystalOrbitForwardDistance ? 'CPVP_APPROACH' : 'CPVP_POSITION';
   }
 }
 

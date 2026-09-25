@@ -12,7 +12,12 @@ process.stderr.write = function(chunk, ...args) {
 };
 
 const mineflayer = require('mineflayer');
-const customSwordPvP = require('@nxg-org/mineflayer-custom-pvp');
+const customSwordPvPModule = require('@nxg-org/mineflayer-custom-pvp');
+// The package has shipped different CommonJS export shapes across releases.
+// Normalize them to the actual Mineflayer plugin function before loadPlugin().
+const customSwordPvP = typeof customSwordPvPModule === 'function'
+  ? customSwordPvPModule
+  : (customSwordPvPModule.plugin || customSwordPvPModule.default?.plugin || customSwordPvPModule.default);
 const { EventEmitter } = require('events');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { Vec3 } = require('vec3');
@@ -1903,6 +1908,9 @@ class MinecraftBotManager extends EventEmitter {
       this.bot.loadPlugin(pathfinder);
       // Custom Sword PvP is loaded globally but activated/configured only by the SWORD profile.
       // Crystal/NethPot/Mace/etc. continue using their existing isolated controllers.
+      if (typeof customSwordPvP !== 'function') {
+        throw new TypeError('Installed @nxg-org/mineflayer-custom-pvp does not expose a Mineflayer plugin function.');
+      }
       this.bot.loadPlugin(customSwordPvP);
 
       this.bot.once('spawn', () => {

@@ -125,15 +125,16 @@ class CriticalAttackController {
       return false;
     }
 
-    // 2. Cooldown check: In Modern Java, attack must be 100% ready. In Classic 1.8, no weapon cooldown restriction.
-    if (this.combatVersion === 'modern' && !isCooldownReady) {
+    // 2. Cooldown check: In Modern Java, attack must be ready or near ready (>= 250ms elapsed)
+    const elapsedSinceLastAttack = now - (this.lastCritTime || 0);
+    if (this.combatVersion === 'modern' && !isCooldownReady && elapsedSinceLastAttack < 250) {
       this.abort('Ground check failed: weapon cooldown not ready');
       return false;
     }
 
-    // 3. Spacing check: must be in useful striking range (1.6m - 3.2m)
-    if (dist < 1.6 || dist > 3.2) {
-      this.abort(`Ground check failed: target distance (${dist.toFixed(2)}m) outside range [1.6, 3.2]`);
+    // 3. Spacing check: must be in useful striking range (1.4m - 3.25m)
+    if (dist < 1.2 || dist > 3.3) {
+      this.abort(`Ground check failed: target distance (${dist.toFixed(2)}m) outside range [1.2, 3.3]`);
       return false;
     }
 
@@ -150,11 +151,9 @@ class CriticalAttackController {
     this.peakY = this.bot.entity.position.y;
     this.lastY = this.bot.entity.position.y;
 
-    // VERSION-SPECIFIC SPRINT HANDLING:
-    // Modern Java (1.20.4+): Attacking while sprinting triggers a sprint-knockback hit,
-    // explicitly disabling critical hits. Sprint is momentarily disengaged during jump/descent.
-    // Classic 1.8: Sprint-jumping crits are fully permitted by vanilla 1.8 mechanics.
     if (this.movementController) {
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
       if (this.combatVersion === 'modern') {
         this.movementController.setControl('sprint', false);
       } else {
@@ -268,7 +267,7 @@ class CriticalAttackController {
           // Target escaped outside reach while airborne -> Abort attack, reposition, land cleanly!
           this.log(`State: FALLING | Target escaped reach (${dist.toFixed(2)}m > 3.3m). Aborting crit to reposition.`);
           this.logTelemetry(target, dist, isCooldownReady, 'ABORT (OUT_OF_RANGE)');
-        } else if ((this.combatVersion === 'classic' || isCooldownReady) && dist <= 3.2) {
+        } else if ((this.combatVersion === 'classic' || isCooldownReady || (now - this.lastCritTime >= 520)) && dist <= 3.25) {
           // EXECUTE FALLING CRITICAL ATTACK!
           this.state = 'CRIT_ATTACK';
           this.lastCritTime = now;

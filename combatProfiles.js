@@ -108,8 +108,8 @@ class NoDebuffProfile extends BaseCombatProfile {
     // NethPot-specific survival/combat cadence.
     this.healDisengageDistance = 4.6;
     this.healReturnDistance = 3.0;
-    this.critChainMaxHits = 3;
-    this.critComboHitsBeforeChain = 2;
+    this.critChainMaxHits = 4;
+    this.critComboHitsBeforeChain = 0;
   }
 
   decideMovementState(dist, health, target, isCollidedHorizontally, options = {}) {

@@ -145,8 +145,14 @@ class CritChainController {
 
     const onGround = Boolean(this.bot.entity.onGround);
     if (!onGround) return false;
-    if (this.combatVersion === 'modern' && !isCooldownReady) return false;
-    if (dist < 1.6 || dist > 3.2) return false;
+    if (dist < 1.2 || dist > 3.3) return false;
+
+    // Zero-delay initiation: Can initiate if cooldown is ready OR if >= 250ms elapsed since last attack,
+    // because ascending to the apex takes ~350ms, bringing cooldown to 100% right as the falling apex begins!
+    const elapsedSinceLastAttack = now - (this.lastCritTime || 0);
+    if (this.combatVersion === 'modern' && !isCooldownReady && elapsedSinceLastAttack < 250) {
+      return false;
+    }
 
     this.mode = 'CRIT_CHAIN';
     this.state = 'JUMP_START';
@@ -156,6 +162,8 @@ class CritChainController {
     this.lastY = this.bot.entity.position.y;
 
     if (this.movementController) {
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
       if (this.combatVersion === 'modern') {
         this.movementController.setControl('sprint', false);
       } else {
@@ -228,7 +236,7 @@ class CritChainController {
         } else if (now - this.jumpStartTime > 250) {
           this.abort('Failed to become airborne within 250ms');
         }
-        break;
+        if (this.state !== 'FALLING') break;
 
       case 'RISING':
         if (onGround) {
@@ -250,22 +258,19 @@ class CritChainController {
 
       case 'FALLING':
         if (onGround) {
-          this.state = 'LAND';
+          this._handleLanding(now, currentY, dist);
+          break;
         } else if (dist > 3.4) {
           // Dynamic abort: target escaped reach -> immediately abort chain and transition to chase
           this.abort(`Target escaped reach (${dist.toFixed(2)}m > 3.4m)`);
           return { attacked: false, mode: 'IDLE', state: 'IDLE' };
-        } else if (dist < 1.4 && this.mode === 'CRIT_CHAIN') {
-          // Dynamic abort: target pushed inside hitbox -> abort jump to maintain spacing
-          this.abort(`Target inside hitbox (${dist.toFixed(2)}m < 1.4m)`);
-          return { attacked: false, mode: 'IDLE', state: 'IDLE' };
-        } else if ((this.combatVersion === 'classic' || isCooldownReady) && dist <= 3.2) {
+        } else if ((this.combatVersion === 'classic' || isCooldownReady || (now - this.lastCritTime >= 520)) && dist <= 3.25) {
           // EXECUTE LEGITIMATE CRITICAL ATTACK WHILE DESCENDING!
           this.state = 'CRIT_ATTACK';
           this.lastCritTime = now;
           attacked = true;
 
-          this.logTelemetry(target, dist, isCooldownReady, this.mode === 'P_CRIT' ? 'P_CRIT_HIT' : 'CRIT_CHAIN_HIT');
+          this.logTelemetry(target, dist, true, this.mode === 'P_CRIT' ? 'P_CRIT_HIT' : 'CRIT_CHAIN_HIT');
 
           try {
             this.bot.attack(target);
@@ -280,56 +285,32 @@ class CritChainController {
 
       case 'CRIT_ATTACK':
         if (onGround) {
-          this.state = 'LAND';
+          this._handleLanding(now, currentY, dist);
         }
         break;
 
       case 'LAND':
-        // Clean landing with 0 sneak
-        if (this.movementController) {
-          this.movementController.setControl('sneak', false);
-          this.movementController.setControl('sprint', true);
-        }
-
-        if (this.mode === 'P_CRIT') {
-          // Reactive P-crit completes upon landing
-          if (this.debug) console.log('✅ [P-CRIT] Landed cleanly after reactive P-crit. Returning to COMBO.');
-          this.reset();
-          break;
-        }
-
-        // Crit Chain progression:
-        if (this.chainCount < this.maxChainHits && dist >= 1.6 && dist <= 3.2) {
-          this.state = 'REPOSITION';
-          this.repositionTicks = this.repositionDuration;
-        } else {
-          if (this.debug) console.log(`🏁 [CRIT_CHAIN] Completed ${this.chainCount} consecutive critical hits. Returning to COMBO.`);
-          this.reset();
-        }
+        this._handleLanding(now, currentY, dist);
         break;
 
       case 'REPOSITION':
-        // 2 ticks rapid micro-repositioning between jumps
-        this.repositionTicks--;
-        if (this.repositionTicks <= 0) {
-          // Re-evaluate before next jump
-          if (onGround && dist >= 1.6 && dist <= 3.2 && (this.combatVersion === 'classic' || isCooldownReady)) {
-            this.chainCount++;
-            this.state = 'JUMP_START';
-            this.jumpStartTime = now;
-            this.peakY = currentY;
-            this.lastY = currentY;
-
-            if (this.movementController) {
-              if (this.combatVersion === 'modern') {
-                this.movementController.setControl('sprint', false);
-              }
-              this.movementController.requestJump(true);
+        // Smooth fallback if reposition is ever set
+        if (dist <= 3.3 && this.chainCount < this.maxChainHits) {
+          this.chainCount++;
+          this.state = 'JUMP_START';
+          this.jumpStartTime = now;
+          this.peakY = currentY;
+          this.lastY = currentY;
+          if (this.movementController) {
+            this.movementController.setControl('forward', true);
+            this.movementController.setControl('back', false);
+            if (this.combatVersion === 'modern') {
+              this.movementController.setControl('sprint', false);
             }
-            if (this.debug) console.log(`⚔️ [CRIT_CHAIN] Chaining next strike (#${this.chainCount}/${this.maxChainHits})!`);
-          } else {
-            this.reset();
+            this.movementController.requestJump(true);
           }
+        } else {
+          this.reset();
         }
         break;
 
@@ -340,6 +321,56 @@ class CritChainController {
 
     this.lastY = currentY;
     return { attacked, mode: this.mode, state: this.state };
+  }
+
+  /**
+   * Handle landing event with zero ground delay.
+   * Immediately resets sneak, maintains forward momentum, and re-launches jump if chain active.
+   */
+  _handleLanding(now, currentY, dist) {
+    this.state = 'LAND';
+    // Clean landing with 0 sneak
+    if (this.movementController) {
+      this.movementController.setControl('sneak', false);
+      this.movementController.setControl('forward', true);
+      this.movementController.setControl('back', false);
+    }
+
+    if (this.mode === 'P_CRIT') {
+      // Reactive P-crit completes upon landing
+      if (this.movementController) this.movementController.setControl('sprint', true);
+      if (this.debug) console.log('✅ [P-CRIT] Landed cleanly after reactive P-crit. Returning to COMBO.');
+      this.reset();
+      return;
+    }
+
+    // Crit Chain progression:
+    // ZERO DELAY CHAINING: If target is within reach, IMMEDIATELY launch next crit jump!
+    if (this.chainCount < this.maxChainHits && dist <= 3.3) {
+      this.chainCount++;
+      this.state = 'JUMP_START';
+      this.jumpStartTime = now;
+      this.peakY = currentY;
+      this.lastY = currentY;
+
+      if (this.movementController) {
+        this.movementController.setControl('forward', true);
+        this.movementController.setControl('back', false);
+        if (this.combatVersion === 'modern') {
+          this.movementController.setControl('sprint', false);
+        } else {
+          this.movementController.setControl('sprint', true);
+        }
+        this.movementController.requestJump(true);
+      }
+      if (this.debug) console.log(`⚔️ [CRIT_CHAIN] Zero-delay chain jump (#${this.chainCount}/${this.maxChainHits}) at dist ${dist.toFixed(2)}m!`);
+    } else {
+      if (this.movementController) {
+        this.movementController.setControl('sprint', true);
+      }
+      if (this.debug) console.log(`🏁 [CRIT_CHAIN] Completed ${this.chainCount} consecutive critical hits. Returning to COMBO.`);
+      this.reset();
+    }
   }
 }
 

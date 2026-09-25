@@ -14,7 +14,7 @@ class NethPotProfile extends BaseCombatProfile {
   constructor(context = {}) {
     super('NETHPOT', context);
     this.comboCount = 0;
-    this.maxComboBeforeCrit = 2; // Only 1-2 hits before returning to critical attacks
+    this.maxComboBeforeCrit = 0; // Zero combo delay: immediate critical hits in NethPot
     this.critSequence = 'GROUND'; // 'GROUND' | 'JUMP' | 'RISING' | 'FALLING' | 'LAND'
     this.jumpStartTime = 0;
     this.lastY = 0;
@@ -182,9 +182,9 @@ class NethPotProfile extends BaseCombatProfile {
       if (onGround) {
         this.critSequence = 'GROUND';
         if (this.movementController) this.movementController.setControl('sprint', true);
-      } else if (dist <= 3.15 && isCooldownReady) {
+      } else if (dist <= 3.25 && (isCooldownReady || (now - this.lastCritTime >= 520))) {
         // EXECUTE FALLING CRITICAL HIT!
-        this.attackScheduler.executeAttack(target, 'CRITICAL');
+        this.attackScheduler.executeAttack(target, 'CRITICAL', { force: true });
         this.critSequence = 'LAND';
         this.comboCount = 0;
         this.lastCritTime = now;
@@ -192,20 +192,39 @@ class NethPotProfile extends BaseCombatProfile {
       }
     } else if (this.critSequence === 'LAND') {
       if (onGround) {
-        this.critSequence = 'GROUND';
-        if (this.movementController) this.movementController.setControl('sprint', true);
+        if (dist >= 1.2 && dist <= 3.25) {
+          // Immediately chain next crit without delay!
+          this.critSequence = 'JUMP';
+          this.jumpStartTime = now;
+          this.peakY = currentY;
+          this.lastY = currentY;
+          if (this.movementController) {
+            this.movementController.setControl('forward', true);
+            this.movementController.setControl('back', false);
+            this.movementController.setControl('sprint', false);
+            this.movementController.requestJump(true);
+          }
+          if (this.stateMachine) this.stateMachine.transitionTo('CRIT_SETUP');
+          this.recordMeaningfulAction('CRIT_JUMP');
+          return;
+        } else {
+          this.critSequence = 'GROUND';
+          if (this.movementController) this.movementController.setControl('sprint', true);
+        }
       }
     }
 
     // 5. ATTACK & COMBO LOGIC
     if (this.critSequence === 'GROUND' && onGround) {
-      // Opportunity for Critical Jump: Target in range, attack ready
-      if (dist >= 1.6 && dist <= 3.1 && isCooldownReady && this.comboCount >= this.maxComboBeforeCrit) {
+      // Opportunity for Critical Jump: Target in range, attack ready (or >= 250ms elapsed)
+      if (dist >= 1.2 && dist <= 3.25 && (isCooldownReady || (now - this.lastCritTime >= 250))) {
         this.critSequence = 'JUMP';
         this.jumpStartTime = now;
         this.peakY = currentY;
         this.lastY = currentY;
         if (this.movementController) {
+          this.movementController.setControl('forward', true);
+          this.movementController.setControl('back', false);
           this.movementController.setControl('sprint', false);
           this.movementController.requestJump(true);
         }

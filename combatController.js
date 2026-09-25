@@ -459,13 +459,15 @@ class CombatController {
     }
 
     // 4. Critical Strike Initiation
+    const isNethPot = this.gamemode && String(this.gamemode).toLowerCase().includes('nethpot');
     const canCrit = this.currentProfile.allowJumpCrits &&
                     (this.bot.health == null || this.bot.health > 10) &&
                     onGround &&
-                    dist >= 1.6 && dist <= 3.2 &&
-                    (this.combatVersion === 'classic' || isCooldownReady);
+                    dist >= 1.2 && dist <= 3.25;
 
     const shouldCrit = canCrit && (
+      isNethPot ||
+      this.currentProfile.name === 'NoDebuff' ||
       this.state === 'CRIT_SETUP' ||
       this.phase === 'CRITICAL_SETUP' ||
       this.comboCount >= this.targetComboHits
@@ -473,7 +475,7 @@ class CombatController {
 
     if (shouldCrit) {
       this.state = 'CRIT_CHAIN';
-      this.phase = 'CRITICAL_SETUP';
+      this.phase = 'CRITICAL_ATTACK';
 
       let started = false;
       if (this.critChainController) {
@@ -753,13 +755,14 @@ class CombatController {
         aggressive: !isCritActiveNow
       });
 
-      // During a crit chain, stop the normal forward-pressure controller from
-      // walking into the target and collapsing the spacing before the falling hit.
-      // Keep the target in reach while the jump/crit controller owns the attack.
-      if (isCritActiveNow && this.critChainController && this.critChainController.mode === 'CRIT_CHAIN') {
-        this.movementController.setControl('forward', dist > 3.0);
-        this.movementController.setControl('back', dist < 1.75);
-        this.movementController.setControl('sprint', false);
+      // Keep target in reach and maintain forward trajectory during airborne critical hits
+      // Strictly prevent mid-air backpedaling or freezing that causes combat fluctuation!
+      if (isCritActiveNow) {
+        this.movementController.setControl('forward', dist >= 1.0);
+        this.movementController.setControl('back', false);
+        if (this.combatVersion === 'modern') {
+          this.movementController.setControl('sprint', false);
+        }
         this.movementController.setControl('sneak', false);
       }
     }

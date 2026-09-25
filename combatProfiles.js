@@ -13,7 +13,7 @@ class BaseCombatProfile {
     this.jumpCritOnlyWhileFalling = true;
     this.preventVoidDrops = false;
     this.sprintOnAttack = true;
-    this.strafeFrequencyTicks = 10;
+    this.strafeFrequencyTicks = 6;
     this.preferAxeAgainstShield = true;
     this.healThresholdHP = 10;
     this.targetAimHeight = 1.4;
@@ -104,7 +104,7 @@ class NoDebuffProfile extends BaseCombatProfile {
     this.allowJumpCrits = true;
     this.jumpCritOnlyWhileFalling = true;
     this.healThresholdHP = 10;
-    this.strafeFrequencyTicks = 8;
+    this.strafeFrequencyTicks = 6;
     // NethPot-specific survival/combat cadence.
     this.healDisengageDistance = 4.6;
     this.healReturnDistance = 3.0;
@@ -189,13 +189,13 @@ class ClassicProfile extends BaseCombatProfile {
 class CrystalProfile extends BaseCombatProfile {
   constructor() {
     super('CrystalPVP');
-    this.idealMinRange = 2.6;
-    this.idealMaxRange = 3.8;
-    this.chaseDistance = 4.4;
+    this.idealMinRange = 2.5;
+    this.idealMaxRange = 3.6;
+    this.chaseDistance = 4.1;
     this.allowJumpCrits = false;
     this.healThresholdHP = 12;
     this.crystalOrbitForwardDistance = 3.25;
-    this.crystalActionIntervalMs = 110;
+    this.crystalActionIntervalMs = 90;
     this.crystalFinishHP = 7;
   }
 
@@ -216,9 +216,9 @@ class CrystalProfile extends BaseCombatProfile {
 class MaceProfile extends BaseCombatProfile {
   constructor() {
     super('MacePVP');
-    this.idealMinRange = 2.0;
-    this.idealMaxRange = 3.2;
-    this.chaseDistance = 3.8;
+    this.idealMinRange = 1.9;
+    this.idealMaxRange = 3.3;
+    this.chaseDistance = 3.6;
     this.allowJumpCrits = true;
   }
 }

@@ -989,15 +989,21 @@ class MinecraftBotManager extends EventEmitter {
     // 2. Physics-tick combat loop (synchronous with 20 tps engine)
     this.physicsTickHandler = () => {
       // 1. DEAD / MATCH ENDED GUARD
-      if (!this.bot || !this.pvpActive) {
+      // The combat controller is the authoritative activity flag. Keeping
+      // this in sync with pvpActive prevents a profile from being started
+      // successfully while the physics loop immediately idles it.
+      const combatRunning = Boolean(
+        this.pvpActive ||
+        (this.combatController && this.combatController.combatActive)
+      );
+      if (!this.bot || !combatRunning) {
         this.stopCombatMovement();
         return;
       }
 
-      // 2. CRIT / POTION SAFETY: If currently throwing a potion, do not swing weapon
-      if (this.potionManager && this.potionManager.isUsingPotion) {
-        return;
-      }
+      // Potion use blocks attacks inside the combat controller, but it must
+      // not stop the physics loop: profiles still need movement/aim/recovery.
+      const usingPotion = Boolean(this.potionManager && this.potionManager.isUsingPotion);
 
       const target = this.findTargetEntity(targetUsername || this.currentOpponent || this.pvpTarget);
       if (!target || !target.position) {

@@ -147,12 +147,10 @@ class CritChainController {
     if (!onGround) return false;
     if (dist < 1.2 || dist > 3.3) return false;
 
-    // Zero-delay initiation: Can initiate if cooldown is ready OR if >= 250ms elapsed since last attack,
-    // because ascending to the apex takes ~350ms, bringing cooldown to 100% right as the falling apex begins!
-    const elapsedSinceLastAttack = now - (this.lastCritTime || 0);
-    if (this.combatVersion === 'modern' && !isCooldownReady && elapsedSinceLastAttack < 250) {
-      return false;
-    }
+    // Respect the actual weapon cooldown on modern combat. The jump itself
+    // provides the repositioning window; an artificial timer here only makes
+    // the bot feel slow or causes mistimed swings. Classic combat has no such
+    // cooldown gate in this controller.
 
     this.mode = 'CRIT_CHAIN';
     this.state = 'JUMP_START';
@@ -264,7 +262,7 @@ class CritChainController {
           // Dynamic abort: target escaped reach -> immediately abort chain and transition to chase
           this.abort(`Target escaped reach (${dist.toFixed(2)}m > 3.4m)`);
           return { attacked: false, mode: 'IDLE', state: 'IDLE' };
-        } else if ((this.combatVersion === 'classic' || isCooldownReady || (now - this.lastCritTime >= 520)) && dist <= 3.25) {
+        } else if ((this.combatVersion === 'classic' || isCooldownReady) && dist <= 3.25) {
           // EXECUTE LEGITIMATE CRITICAL ATTACK WHILE DESCENDING!
           this.state = 'CRIT_ATTACK';
           this.lastCritTime = now;

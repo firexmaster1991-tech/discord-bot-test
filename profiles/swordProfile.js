@@ -48,36 +48,7 @@ class SwordProfile extends BaseCombatProfile {
     super.startCombat(target);
     this.comboCount = 0;
     this.isAirborneCrit = false;
-    this.recordMeaningfulAction('START');
-
-    // Optional custom SwordPvP engine. It is isolated to SWORD only and can be disabled
-    // with USE_CUSTOM_SWORD_PVP=false without affecting any other gamemode profile.
-    if (this.bot && this.bot.swordpvp && process.env.USE_CUSTOM_SWORD_PVP !== 'false') {
-      try {
-        const opts = this.bot.swordpvp.options || {};
-        if (opts.critConfig) {
-          opts.critConfig.enabled = true;
-          opts.critConfig.mode = 'reactive';
-        }
-        if (opts.strafeConfig) {
-          opts.strafeConfig.enabled = true;
-          if (opts.strafeConfig.mode) opts.strafeConfig.mode.mode = 'intelligent';
-        }
-        if (opts.tapConfig) {
-          opts.tapConfig.enabled = true;
-          opts.tapConfig.mode = 'wtap';
-        }
-        if (opts.rotateConfig) {
-          opts.rotateConfig.smooth = true;
-          opts.rotateConfig.mode = 'constant';
-        }
-      } catch (err) {
-        console.warn('[SWORD PVP] Custom engine configuration warning:', err.message);
-      }
-    }
-  }
-
-  update(target, dist, currentHealth, targetHealth, isCooldownReady, now = Date.now()) {
+    this.recordMeaningfulAction('START');  update(target, dist, currentHealth, targetHealth, isCooldownReady, now = Date.now()) {
     if (!this.bot || !this.bot.entity || !target) return;
 
     // Check stuck watchdog
@@ -137,27 +108,7 @@ class SwordProfile extends BaseCombatProfile {
         this.recordMeaningfulAction('FINISH_COMBO');
       }
       return;
-    }
-
-    // 3. Optional custom SwordPvP engine. This replaces the local Sword attack loop only;
-    // NethPot/Crystal/Mace/etc. never enter this branch.
-    if (this.bot.swordpvp && process.env.USE_CUSTOM_SWORD_PVP !== 'false') {
-      try {
-        this.bot.swordpvp.attack(target);
-        if (this.movementController) {
-          this.distanceController?.applySpacingMovement(target, dist, {
-            allowSprint: true,
-            opponentModel: this.opponentModel
-          });
-        }
-        this.recordMeaningfulAction('CUSTOM_SWORD_PVP');
-        return;
-      } catch (err) {
-        console.warn('[SWORD PVP] Custom engine failed; falling back to local controller:', err.message);
-      }
-    }
-
-    // 3. Opportunistic Critical Strike:
+    }    // 3. Opportunistic Critical Strike:
     // Only used when target spacing is good, attack is ready, and it won't ruin combo momentum!
     if (this.isAirborneCrit) {
       if (onGround) {

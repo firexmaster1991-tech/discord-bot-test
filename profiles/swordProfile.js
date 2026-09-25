@@ -48,7 +48,10 @@ class SwordProfile extends BaseCombatProfile {
     super.startCombat(target);
     this.comboCount = 0;
     this.isAirborneCrit = false;
-    this.recordMeaningfulAction('START');  update(target, dist, currentHealth, targetHealth, isCooldownReady, now = Date.now()) {
+    this.recordMeaningfulAction('START');
+  }
+
+  update(target, dist, currentHealth, targetHealth, isCooldownReady, now = Date.now()) {
     if (!this.bot || !this.bot.entity || !target) return;
 
     // Check stuck watchdog

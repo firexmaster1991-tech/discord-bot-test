@@ -12,12 +12,6 @@ process.stderr.write = function(chunk, ...args) {
 };
 
 const mineflayer = require('mineflayer');
-const customSwordPvPModule = require('@nxg-org/mineflayer-custom-pvp');
-// The package has shipped different CommonJS export shapes across releases.
-// Normalize them to the actual Mineflayer plugin function before loadPlugin().
-const customSwordPvP = typeof customSwordPvPModule === 'function'
-  ? customSwordPvPModule
-  : (customSwordPvPModule.plugin || customSwordPvPModule.default?.plugin || customSwordPvPModule.default);
 const { EventEmitter } = require('events');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { Vec3 } = require('vec3');
@@ -1906,53 +1900,6 @@ class MinecraftBotManager extends EventEmitter {
       });
 
       this.bot.loadPlugin(pathfinder);
-      // Custom Sword PvP is loaded globally but activated/configured only by the SWORD profile.
-      // Crystal/NethPot/Mace/etc. continue using their existing isolated controllers.
-      if (typeof customSwordPvP !== 'function') {
-        throw new TypeError('Installed @nxg-org/mineflayer-custom-pvp does not expose a Mineflayer plugin function.');
-      }
-      this.bot.loadPlugin(customSwordPvP);
-
-      this.bot.once('spawn', () => {
-        this.status = 'online';
-        this.state = 'CONNECTED';
-        this.movementController.bot = this.bot;
-        this.movementController.clearAllControls();
-        this.potionManager.bot = this.bot;
-        this.potionManager.attachBotListeners();
-        if (this.combatController) {
-          this.combatController.setBot(this.bot, this.activeServerProfile);
-        }
-
-        const defaultMove = new Movements(this.bot);
-        defaultMove.canDig = false;
-        defaultMove.allowParkour = true;
-        defaultMove.allow1by1towers = false;
-        defaultMove.sprint = true;
-        this.bot.pathfinder.setMovements(defaultMove);
-
-        // Configure the optional SwordPvP plugin with non-packet, non-blatant settings.
-        // We deliberately do NOT enable packet criticals or blatant shield modes.
-        if (this.bot.swordpvp && this.bot.swordpvp.options) {
-          const opts = this.bot.swordpvp.options;
-          if (opts.critConfig) {
-            opts.critConfig.enabled = true;
-            opts.critConfig.mode = 'reactive';
-          }
-          if (opts.strafeConfig) {
-            opts.strafeConfig.enabled = true;
-            if (opts.strafeConfig.mode) opts.strafeConfig.mode.mode = 'intelligent';
-          }
-          if (opts.tapConfig) {
-            opts.tapConfig.enabled = true;
-            opts.tapConfig.mode = 'wtap';
-          }
-          if (opts.rotateConfig) {
-            opts.rotateConfig.smooth = true;
-            opts.rotateConfig.mode = 'constant';
-          }
-          console.log('🗡️ [SWORD PVP] Custom SwordPvP loaded (reactive crits, intelligent strafe, W-tap, smooth aim).');
-        }
 
         console.log(`✅ Minecraft bot spawned in server "${profile.name}" (${host}:${port}) successfully.`);
         this.emit('spawn');

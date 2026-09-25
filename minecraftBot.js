@@ -1901,6 +1901,9 @@ class MinecraftBotManager extends EventEmitter {
 
       this.bot.loadPlugin(pathfinder);
 
+      this.bot.once('spawn', () => {
+        this.status = 'online';
+        this.state = 'CONNECTED';
         console.log(`✅ Minecraft bot spawned in server "${profile.name}" (${host}:${port}) successfully.`);
         this.emit('spawn');
 

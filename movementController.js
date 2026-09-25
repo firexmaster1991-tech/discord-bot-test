@@ -54,7 +54,7 @@ class CombatMovementController {
 
     // Jump timing (controlled, non-spam)
     this.lastJumpTime = 0;
-    this.jumpCooldown = 350; // ms
+    this.jumpCooldown = 250; // ms - fast enough for chained jump timing
 
     // Target velocity estimation
     this.prevTargetPos = null;

@@ -203,7 +203,8 @@ class CrystalProfile extends BaseCombatProfile {
     if (health != null && health <= this.healThresholdHP) return 'RETREAT';
     if (dist > this.chaseDistance) return 'CHASE';
     if (dist < this.idealMinRange) return 'CPVP_POSITION';
-    return dist > this.crystalOrbitForwardDistance ? 'CPVP_APPROACH' : 'CPVP_POSITION';
+    // CPVP_APPROACH is normalized by MovementController to APPROACH.
+    return dist > this.crystalOrbitForwardDistance ? 'APPROACH' : 'CPVP_POSITION';
   }
 }
 

@@ -49,7 +49,7 @@ class CombatMovementController {
 
     // Strafe cadence
     this.strafeTicks = 0;
-    this.strafeChangeInterval = 10;
+    this.strafeChangeInterval = 7;
     this.currentStrafeDirection = 'left';
 
     // Jump timing (controlled, non-spam)
@@ -65,9 +65,9 @@ class CombatMovementController {
     this.lastAimTime = 0;
     this.lastAimYaw = null;
     this.lastAimPitch = null;
-    this.aimUpdateIntervalMs = 33;
-    this.aimDeadbandRad = 0.008;
-    this.aimSmoothing = 0.72;
+    this.aimUpdateIntervalMs = 25;
+    this.aimDeadbandRad = 0.005;
+    this.aimSmoothing = 0.68;
 
     // Diagnostics & logging
     this.debug = false;
@@ -695,7 +695,7 @@ ERROR: Displacement stalled under active movement command
     if (this.strafeTicks >= this.strafeChangeInterval) {
       this.strafeTicks = 0;
       this.currentStrafeDirection = this.currentStrafeDirection === 'left' ? 'right' : 'left';
-      this.strafeChangeInterval = 8 + Math.floor(Math.random() * 7); // 8-14 ticks
+      this.strafeChangeInterval = 6 + Math.floor(Math.random() * 5); // 6-10 ticks
     }
 
     // 2. Corner Danger Mitigation: If corner detected, switch immediately to ESCAPE

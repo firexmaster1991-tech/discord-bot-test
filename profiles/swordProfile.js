@@ -20,8 +20,8 @@ class SwordProfile extends BaseCombatProfile {
     this.lastCritTime = 0;
 
     // Tactical ranges
-    this.idealMinRange = 2.25;
-    this.idealMaxRange = 3.0;
+    this.idealMinRange = 2.05;
+    this.idealMaxRange = 2.85;
     this.allowJumpCrits = false; // Primary style is grounded combo pressure
   }
 
@@ -174,6 +174,7 @@ class SwordProfile extends BaseCombatProfile {
     if (this.distanceController) {
       this.distanceController.applySpacingMovement(target, dist, {
         allowSprint: !this.isAirborneCrit,
+        aggressive: true,
         opponentModel: this.opponentModel
       });
     }

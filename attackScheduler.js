@@ -87,7 +87,7 @@ class AttackScheduler {
     // Jump-reset opportunity: execute micro-jump during incoming knockback
     this.lastJumpResetTime = now;
     if (this.movementController && typeof this.movementController.requestJump === 'function') {
-      this.movementController.requestJump(true);
+      this.movementController.requestJump(true, 'jump_reset');
       if (this.debug) console.log('🦘 [JUMP_RESET] Executed jump reset to absorb incoming knockback.');
     }
   }

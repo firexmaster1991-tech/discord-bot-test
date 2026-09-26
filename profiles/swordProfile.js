@@ -54,8 +54,6 @@ class SwordProfile extends BaseCombatProfile {
     this.checkStuckWatchdog(target, now);
 
     const onGround = Boolean(this.bot.entity.onGround);
-    const vy = this.bot.entity.velocity ? this.bot.entity.velocity.y : 0;
-
     // 1. Survival Check: Golden Apple / Health Pot at <= 10 HP
     const isHealing = this.potionManager && (this.potionManager.healingActionLock || this.potionManager.isEating || this.potionManager.isUsingPotion);
     if (isHealing) {
@@ -107,8 +105,9 @@ class SwordProfile extends BaseCombatProfile {
         this.recordMeaningfulAction('FINISH_COMBO');
       }
       return;
-    }    // 3. Hit-Select Opportunity (counter attack without leaving the ground)
- (Counter attack immediately after opponent attack)
+    }
+
+    // 3. Hit-Select Opportunity (counter attack without leaving the ground)
     if (onGround && dist <= 3.15 && this.attackScheduler && typeof this.attackScheduler.canHitSelect === 'function' && this.attackScheduler.canHitSelect(now)) {
       if (this.attackScheduler.isCooldownReady(now, true)) {
         this.comboCount++;
@@ -138,7 +137,7 @@ class SwordProfile extends BaseCombatProfile {
       this.recordMeaningfulAction('COMBO_HIT');
     }
 
-    // 6. Dynamic Movement Spacing (2.4m - 2.85m Outspacing + Lateral Strafing)
+    // 5. Dynamic Movement Spacing (2.4m - 2.85m Outspacing + Lateral Strafing)
     if (this.distanceController) {
       this.distanceController.applySpacingMovement(target, dist, {
         allowSprint: true,

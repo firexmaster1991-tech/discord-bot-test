@@ -14,7 +14,7 @@ class NethPotProfile extends BaseCombatProfile {
   constructor(context = {}) {
     super('NETHPOT', context);
     this.comboCount = 0;
-    this.maxComboBeforeCrit = 0; // Zero combo delay: immediate critical hits in NethPot
+    this.maxComboBeforeCrit = 1; // Zero combo delay: immediate critical hits in NethPot
     this.critSequence = 'GROUND'; // 'GROUND' | 'JUMP' | 'RISING' | 'FALLING' | 'LAND'
     this.jumpStartTime = 0;
     this.lastY = 0;
@@ -247,6 +247,7 @@ class NethPotProfile extends BaseCombatProfile {
       const allowSprint = this.critSequence === 'GROUND';
       this.distanceController.applySpacingMovement(target, dist, {
         allowSprint,
+        aggressive: true,
         opponentModel: this.opponentModel
       });
     }

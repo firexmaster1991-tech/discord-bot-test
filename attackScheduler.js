@@ -158,6 +158,8 @@ class AttackScheduler {
       // knockback is applied; W-tap reset happens immediately after the hit.
       if (type === 'NORMAL_HIT' || type === 'COMBO_HIT' || type === 'HIT_SELECT') {
         if (this.movementController && this.combatVersion === 'modern') {
+          this.movementController.setControl('back', false);
+          this.movementController.setControl('forward', true);
           this.movementController.setControl('sprint', true);
         }
       }

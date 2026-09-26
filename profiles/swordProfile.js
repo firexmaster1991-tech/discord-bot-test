@@ -44,8 +44,8 @@ class SwordProfile extends BaseCombatProfile {
   startCombat(target) {
     super.startCombat(target);
     this.comboCount = 0;
-    // Sword mode is strictly grounded combo PvP: no jumps, no jump resets,
-    // and no automatic step-up jumps while chasing.
+    // Sword mode: grounded combo pressure.
+    // Automatic/attack jumping is OFF, but jump-reset remains ON after incoming damage.
     if (this.movementController && typeof this.movementController.setCombatJumpingEnabled === 'function') {
       this.movementController.setCombatJumpingEnabled(true, { autoJump: false });
     }
@@ -123,23 +123,26 @@ class SwordProfile extends BaseCombatProfile {
       }
     }
 
-    // 4. Grounded Combo Hit (PRIMARY DRIVER - no crit jumps)
-    if (onGround && dist <= 3.15 && isCooldownReady && (!this.attackScheduler || (now - this.attackScheduler.lastAttackTime > 250))) {
+    // 4. Grounded Combo Hit (PRIMARY DRIVER)
+    // Full sword cooldown is enforced by AttackScheduler. Never jump for the attack.
+    if (onGround && dist <= 3.15 && isCooldownReady) {
       this.comboCount++;
 
-      // Stay grounded. Sword mode is combo-first; do not convert the sequence into crit jumps.
-
-      // S-Tap decision: Only use if opponent is close (< 2.2m) to re-establish spacing without losing pressure
-      const shouldSTap = dist < 2.0 && (!this.opponentModel || !this.opponentModel.isRetreating);
+      // Use S-tap periodically at close range; all other combo hits use W-tap.
+      // This keeps both techniques active without stacking their timers on one hit.
+      const shouldSTap =
+        dist < 2.15 &&
+        (!this.opponentModel || !this.opponentModel.isRetreating) &&
+        (this.comboCount % 3 === 0 || dist < 1.9);
 
       this.attackScheduler.executeAttack(target, 'NORMAL_HIT', {
-        triggerSprintReset: true,
+        triggerSprintReset: !shouldSTap,
         triggerSTap: shouldSTap,
-        sTapDuration: 35
+        sTapDuration: 40
       });
 
       if (this.stateMachine) this.stateMachine.transitionTo('COMBO');
-      this.recordMeaningfulAction('COMBO_HIT');
+      this.recordMeaningfulAction(shouldSTap ? 'COMBO_S_TAP' : 'COMBO_W_TAP');
     }
 
     // 5. Dynamic Movement Spacing (2.4m - 2.85m Outspacing + Lateral Strafing)

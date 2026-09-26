@@ -35,7 +35,7 @@ class CombatDistanceController {
     // Strafe cadence & intelligence
     this.currentStrafeDirection = 'left';
     this.strafeTicks = 0;
-    this.strafeChangeInterval = 6;
+    this.strafeChangeInterval = 10;
     this.lastStrafeBreakTime = 0;
 
     // Open space & escape vector
@@ -119,7 +119,7 @@ class CombatDistanceController {
     if (this.strafeTicks >= this.strafeChangeInterval) {
       this.strafeTicks = 0;
       this.currentStrafeDirection = this.currentStrafeDirection === 'left' ? 'right' : 'left';
-      this.strafeChangeInterval = 6 + Math.floor(Math.random() * 5);
+      this.strafeChangeInterval = 10 + Math.floor(Math.random() * 5); // 10-14 ticks
     }
 
     // Adapt strafe direction if opponent model provides strafe feedback

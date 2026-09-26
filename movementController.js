@@ -59,15 +59,16 @@ class CombatMovementController {
     // Target velocity estimation
     this.prevTargetPos = null;
     this.targetVelocity = new Vec3(0, 0, 0);
+    this.smoothedTargetVelocity = new Vec3(0, 0, 0);
 
     // Aim smoothing / deadband. Calling bot.look() every 20 TPS with tiny
     // prediction changes causes visible micro head jitter.
     this.lastAimTime = 0;
     this.lastAimYaw = null;
     this.lastAimPitch = null;
-    this.aimUpdateIntervalMs = 25;
-    this.aimDeadbandRad = 0.005;
-    this.aimSmoothing = 0.68;
+    this.aimUpdateIntervalMs = 40;
+    this.aimDeadbandRad = 0.010;
+    this.aimSmoothing = 0.45;
 
     // Diagnostics & logging
     this.debug = false;
@@ -550,16 +551,22 @@ ERROR: Displacement stalled under active movement command
     const targetPos = targetEntity.position;
 
     if (this.prevTargetPos) {
-      this.targetVelocity = targetPos.minus(this.prevTargetPos);
+      const measuredVelocity = targetPos.minus(this.prevTargetPos);
+      this.targetVelocity = measuredVelocity;
+      // Low-pass the measured velocity so knockback/network packets do not
+      // make the crosshair visibly snap from one prediction vector to another.
+      this.smoothedTargetVelocity.x = (this.smoothedTargetVelocity.x * 0.70) + (measuredVelocity.x * 0.30);
+      this.smoothedTargetVelocity.y = (this.smoothedTargetVelocity.y * 0.70) + (measuredVelocity.y * 0.30);
+      this.smoothedTargetVelocity.z = (this.smoothedTargetVelocity.z * 0.70) + (measuredVelocity.z * 0.30);
     }
     this.prevTargetPos = targetPos.clone();
 
     // Velocity is measured in blocks per physics tick. Clamp prediction so a
     // sudden teleport/knockback packet cannot make the head snap wildly.
     const predictionTicks = Math.max(0, Math.min(lookaheadSeconds * 20, 3.0));
-    const predictedVX = Math.max(-0.45, Math.min(0.45, this.targetVelocity.x));
-    const predictedVY = Math.max(-0.45, Math.min(0.45, this.targetVelocity.y));
-    const predictedVZ = Math.max(-0.45, Math.min(0.45, this.targetVelocity.z));
+    const predictedVX = Math.max(-0.40, Math.min(0.40, this.smoothedTargetVelocity.x));
+    const predictedVY = Math.max(-0.30, Math.min(0.30, this.smoothedTargetVelocity.y));
+    const predictedVZ = Math.max(-0.40, Math.min(0.40, this.smoothedTargetVelocity.z));
 
     const predX = targetPos.x + (predictedVX * predictionTicks);
     const predY = targetPos.y + aimHeight + (predictedVY * 0.5);

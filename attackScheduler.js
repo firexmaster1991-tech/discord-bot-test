@@ -37,7 +37,7 @@ class AttackScheduler {
 
     // Jump-Reset tracking
     this.lastDamageReceivedTime = 0;
-    this.jumpResetCooldownMs = 450;
+    this.jumpResetCooldownMs = 300;
     this.lastJumpResetTime = 0;
 
     // Telemetry & Benchmark counters
@@ -170,14 +170,12 @@ class AttackScheduler {
         this.bot.swingArm('right');
       }
 
-      // W-Tap / Sprint Reset trigger for combo/normal hits
-      if (options.triggerSprintReset !== false && type !== 'CRITICAL' && type !== 'P_CRIT') {
-        this.triggerWTap();
-      }
-
-      // S-Tap trigger if requested and useful
+      // Use exactly one sprint-reset technique per hit.
+      // S-tap owns the reset when explicitly requested; otherwise W-tap does.
       if (options.triggerSTap === true) {
         this.triggerSTap(options.sTapDuration || 40);
+      } else if (options.triggerSprintReset !== false && type !== 'CRITICAL' && type !== 'P_CRIT') {
+        this.triggerWTap();
       }
 
       return true;

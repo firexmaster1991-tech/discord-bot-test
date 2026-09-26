@@ -179,9 +179,11 @@ class CombatController {
 
   setGamemode(gamemode) {
     this.gamemode = gamemode;
-    this.currentProfile = getCombatProfile(gamemode);
     if (this.profileManager) {
       this.profileManager.setActiveProfile(gamemode);
+      this.currentProfile = this.profileManager.getActiveProfile();
+    } else {
+      this.currentProfile = getCombatProfile(gamemode);
     }
   }
 

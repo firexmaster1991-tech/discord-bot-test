@@ -1548,10 +1548,10 @@ class MinecraftBotManager extends EventEmitter {
     // Ensure hotbar is fully stocked with potions before engagement
     this.refillHotbarWithPotions();
 
-    // Propel forward through MovementController
+    // Start grounded. Jump behavior is owned by the active PvP profile.
+    // Sword specifically uses jump-reset only after incoming damage.
     if (this.movementController) {
       this.movementController.setState('CHASE');
-      this.movementController.requestJump(true);
     }
 
     this.startPvP(opponentName);

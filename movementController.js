@@ -25,6 +25,7 @@ class CombatMovementController {
     this.currentState = 'IDLE';
     this.previousState = 'IDLE';
     this.stateStartTime = Date.now();
+    this.combatJumpingEnabled = true;
 
     // State of all 7 tracked controls (only this controller may mutate)
     this.activeControls = {
@@ -284,11 +285,19 @@ class CombatMovementController {
     }
   }
 
+  /** Enable/disable profile-controlled combat jumping. */
+  setCombatJumpingEnabled(enabled = true) {
+    this.combatJumpingEnabled = Boolean(enabled);
+    if (!this.combatJumpingEnabled) {
+      this.setControl('jump', false);
+    }
+  }
+
   /**
    * Human-like Jump Controller: Controlled, non-spam jumping.
    */
   requestJump(force = false) {
-    if (!this.bot || !this.bot.entity) return false;
+    if (!this.bot || !this.bot.entity || !this.combatJumpingEnabled) return false;
     const now = Date.now();
     if (!force && now - this.lastJumpTime < this.jumpCooldown) return false;
     if (!this.bot.entity.onGround) return false;
@@ -727,7 +736,7 @@ ERROR: Displacement stalled under active movement command
     }
 
     // 4. Auto-clear 1-block steps during approach
-    if (this.bot.entity.isCollidedHorizontally && (this.currentState === 'CHASE' || this.currentState === 'APPROACH')) {
+    if (this.combatJumpingEnabled && this.bot.entity.isCollidedHorizontally && (this.currentState === 'CHASE' || this.currentState === 'APPROACH')) {
       this.requestJump(true);
     }
 

@@ -66,9 +66,9 @@ class CombatMovementController {
     this.lastAimTime = 0;
     this.lastAimYaw = null;
     this.lastAimPitch = null;
-    this.aimUpdateIntervalMs = 50;
-    this.aimDeadbandRad = 0.014;
-    this.aimSmoothing = 0.32;
+    this.aimUpdateIntervalMs = 40;
+    this.aimDeadbandRad = 0.009;
+    this.aimSmoothing = 0.45;
 
     // Diagnostics & logging
     this.debug = false;
@@ -702,7 +702,7 @@ ERROR: Displacement stalled under active movement command
     if (this.strafeTicks >= this.strafeChangeInterval) {
       this.strafeTicks = 0;
       this.currentStrafeDirection = this.currentStrafeDirection === 'left' ? 'right' : 'left';
-      this.strafeChangeInterval = 6 + Math.floor(Math.random() * 5); // 6-10 ticks
+      this.strafeChangeInterval = 10 + Math.floor(Math.random() * 5); // 10-14 ticks
     }
 
     // 2. Corner Danger Mitigation: If corner detected, switch immediately to ESCAPE

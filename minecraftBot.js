@@ -943,7 +943,9 @@ class MinecraftBotManager extends EventEmitter {
       }
     }
 
-    this.currentProfile = getCombatProfile(this.selectedGamemode);
+    this.currentProfile = this.combatController.profileManager
+      ? this.combatController.profileManager.getActiveProfile()
+      : getCombatProfile(this.selectedGamemode);
     this.combatState = 'APPROACH';
     this.isWtapping = false;
     this.isHealing = false;

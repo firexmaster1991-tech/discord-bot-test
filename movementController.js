@@ -66,9 +66,9 @@ class CombatMovementController {
     this.lastAimTime = 0;
     this.lastAimYaw = null;
     this.lastAimPitch = null;
-    this.aimUpdateIntervalMs = 40;
-    this.aimDeadbandRad = 0.010;
-    this.aimSmoothing = 0.45;
+    this.aimUpdateIntervalMs = 50;
+    this.aimDeadbandRad = 0.014;
+    this.aimSmoothing = 0.32;
 
     // Diagnostics & logging
     this.debug = false;
@@ -564,9 +564,9 @@ ERROR: Displacement stalled under active movement command
     // Velocity is measured in blocks per physics tick. Clamp prediction so a
     // sudden teleport/knockback packet cannot make the head snap wildly.
     const predictionTicks = Math.max(0, Math.min(lookaheadSeconds * 20, 3.0));
-    const predictedVX = Math.max(-0.40, Math.min(0.40, this.smoothedTargetVelocity.x));
-    const predictedVY = Math.max(-0.30, Math.min(0.30, this.smoothedTargetVelocity.y));
-    const predictedVZ = Math.max(-0.40, Math.min(0.40, this.smoothedTargetVelocity.z));
+    const predictedVX = Math.max(-0.32, Math.min(0.32, this.smoothedTargetVelocity.x));
+    const predictedVY = Math.max(-0.20, Math.min(0.20, this.smoothedTargetVelocity.y));
+    const predictedVZ = Math.max(-0.32, Math.min(0.32, this.smoothedTargetVelocity.z));
 
     const predX = targetPos.x + (predictedVX * predictionTicks);
     const predY = targetPos.y + aimHeight + (predictedVY * 0.5);

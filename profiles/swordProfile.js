@@ -4,20 +4,17 @@ const BaseCombatProfile = require('./baseProfile');
  * Sword Combat Profile.
  * 
  * PRIMARY STYLE:
- * - Strategy: COMBOS > SPACING > STRAFING > OCCASIONAL CRIT
+ * - Strategy: COMBOS > SPACING > STRAFING (NO CRITS)
  * - Continuous Grounded Aggressive Pressure (no constant jumping)
  * - Dynamic 45-degree Strafing & Edge of Reach Outspacing (2.4m - 2.85m)
  * - Tick-level Sprint Resets (W-Tap) & Spacing S-Taps
  * - Hit-Select Counter Attacks within 200ms
- * - Crits are Secondary and Opportunistic (only after 3+ combo hits)
+ * - Never jumps for crits; every attack is part of grounded combo pressure
  */
 class SwordProfile extends BaseCombatProfile {
   constructor(context = {}) {
     super('SWORD', context);
     this.comboCount = 0;
-    this.isAirborneCrit = false;
-    this.critCooldown = 1800; // Occasional crits without interrupting grounded pressure
-    this.lastCritTime = 0;
 
     // Tactical ranges
     this.idealMinRange = 2.05;
@@ -47,7 +44,6 @@ class SwordProfile extends BaseCombatProfile {
   startCombat(target) {
     super.startCombat(target);
     this.comboCount = 0;
-    this.isAirborneCrit = false;
     this.recordMeaningfulAction('START');
   }
 
@@ -111,24 +107,8 @@ class SwordProfile extends BaseCombatProfile {
         this.recordMeaningfulAction('FINISH_COMBO');
       }
       return;
-    }    // 3. Opportunistic Critical Strike:
-    // Only used when target spacing is good, attack is ready, and it won't ruin combo momentum!
-    if (this.isAirborneCrit) {
-      if (onGround) {
-        this.isAirborneCrit = false;
-        if (this.movementController) this.movementController.setControl('sprint', true);
-      } else if (vy < -0.04 && dist <= 3.15 && isCooldownReady) {
-        // Execute falling crit
-        this.attackScheduler.executeAttack(target, 'CRITICAL');
-        this.lastCritTime = now;
-        this.isAirborneCrit = false;
-        if (this.stateMachine) this.stateMachine.transitionTo('CRIT_ATTACK');
-        this.recordMeaningfulAction('CRIT_HIT');
-        return;
-      }
-    }
-
-    // 4. Hit-Select Opportunity (Counter attack immediately after opponent attack)
+    }    // 3. Hit-Select Opportunity (counter attack without leaving the ground)
+ (Counter attack immediately after opponent attack)
     if (onGround && dist <= 3.15 && this.attackScheduler && typeof this.attackScheduler.canHitSelect === 'function' && this.attackScheduler.canHitSelect(now)) {
       if (this.attackScheduler.isCooldownReady(now, true)) {
         this.comboCount++;
@@ -139,23 +119,11 @@ class SwordProfile extends BaseCombatProfile {
       }
     }
 
-    // 5. Grounded Combo Hit (Primary Combat Driver)
+    // 4. Grounded Combo Hit (PRIMARY DRIVER - no crit jumps)
     if (onGround && dist <= 3.15 && isCooldownReady && (!this.attackScheduler || (now - this.attackScheduler.lastAttackTime > 250))) {
       this.comboCount++;
 
-      // Check occasional crit opportunity (after 3+ combo hits, spacing good, not chasing retreating enemy)
-      const canOccasionalCrit = this.comboCount >= 3 && (now - this.lastCritTime > this.critCooldown) && dist >= 2.0 && dist <= 2.8;
-      if (canOccasionalCrit && (!this.opponentModel || !this.opponentModel.isRetreating)) {
-        this.isAirborneCrit = true;
-        this.lastCritTime = now;
-        if (this.movementController) {
-          this.movementController.setControl('sprint', false);
-          this.movementController.requestJump(true);
-        }
-        if (this.stateMachine) this.stateMachine.transitionTo('CRIT_SETUP');
-        this.recordMeaningfulAction('CRIT_SETUP');
-        return;
-      }
+      // Stay grounded. Sword mode is combo-first; do not convert the sequence into crit jumps.
 
       // S-Tap decision: Only use if opponent is close (< 2.2m) to re-establish spacing without losing pressure
       const shouldSTap = dist < 2.0 && (!this.opponentModel || !this.opponentModel.isRetreating);
@@ -173,7 +141,7 @@ class SwordProfile extends BaseCombatProfile {
     // 6. Dynamic Movement Spacing (2.4m - 2.85m Outspacing + Lateral Strafing)
     if (this.distanceController) {
       this.distanceController.applySpacingMovement(target, dist, {
-        allowSprint: !this.isAirborneCrit,
+        allowSprint: true,
         aggressive: true,
         opponentModel: this.opponentModel
       });
@@ -188,7 +156,6 @@ class SwordProfile extends BaseCombatProfile {
     }
     super.stopCombat();
     this.comboCount = 0;
-    this.isAirborneCrit = false;
   }
 }
 

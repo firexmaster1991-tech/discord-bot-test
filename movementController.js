@@ -26,6 +26,7 @@ class CombatMovementController {
     this.previousState = 'IDLE';
     this.stateStartTime = Date.now();
     this.combatJumpingEnabled = true;
+    this.combatAutoJumpEnabled = true;
 
     // State of all 7 tracked controls (only this controller may mutate)
     this.activeControls = {
@@ -286,18 +287,18 @@ class CombatMovementController {
   }
 
   /** Enable/disable profile-controlled combat jumping. */
-  setCombatJumpingEnabled(enabled = true) {
+  setCombatJumpingEnabled(enabled = true, options = {}) {
     this.combatJumpingEnabled = Boolean(enabled);
-    if (!this.combatJumpingEnabled) {
-      this.setControl('jump', false);
-    }
+    if (options.autoJump !== undefined) this.combatAutoJumpEnabled = Boolean(options.autoJump);
+    if (!this.combatJumpingEnabled) this.setControl('jump', false);
   }
 
   /**
    * Human-like Jump Controller: Controlled, non-spam jumping.
    */
-  requestJump(force = false) {
+  requestJump(force = false, reason = 'manual') {
     if (!this.bot || !this.bot.entity || !this.combatJumpingEnabled) return false;
+    if (reason !== 'jump_reset' && !this.combatAutoJumpEnabled) return false;
     const now = Date.now();
     if (!force && now - this.lastJumpTime < this.jumpCooldown) return false;
     if (!this.bot.entity.onGround) return false;
@@ -515,7 +516,7 @@ ERROR: Displacement stalled under active movement command
     this.stuckTicks = 0;
 
     // 4. Wall-sliding lateral impulse: move AWAY from the obstacle
-    this.setControl('jump', true);
+    if (this.combatAutoJumpEnabled) this.setControl('jump', true);
     this.setControl('forward', !cornerInfo.wallAhead);
     this.setControl('back', cornerInfo.wallAhead && !cornerInfo.wallBehind);
     this.setControl('sprint', true);
@@ -736,7 +737,7 @@ ERROR: Displacement stalled under active movement command
     }
 
     // 4. Auto-clear 1-block steps during approach
-    if (this.combatJumpingEnabled && this.bot.entity.isCollidedHorizontally && (this.currentState === 'CHASE' || this.currentState === 'APPROACH')) {
+    if (this.combatJumpingEnabled && this.combatAutoJumpEnabled && this.bot.entity.isCollidedHorizontally && (this.currentState === 'CHASE' || this.currentState === 'APPROACH')) {
       this.requestJump(true);
     }
 

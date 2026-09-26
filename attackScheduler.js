@@ -81,6 +81,7 @@ class AttackScheduler {
     this.lastDamageReceivedTime = now;
 
     if (!this.bot || !this.bot.entity || !this.bot.entity.onGround) return;
+    if (this.movementController && this.movementController.combatJumpingEnabled === false) return;
     if (now - this.lastJumpResetTime < this.jumpResetCooldownMs) return;
 
     // Jump-reset opportunity: execute micro-jump during incoming knockback
@@ -150,6 +151,14 @@ class AttackScheduler {
           this.movementController.setControl('sprint', false);
         } else if (this.bot && typeof this.bot.setControlState === 'function' && this.combatVersion === 'modern') {
           this.bot.setControlState('sprint', false);
+        }
+      }
+
+      // Grounded combo hits should connect while sprinting so vanilla melee
+      // knockback is applied; W-tap reset happens immediately after the hit.
+      if (type === 'NORMAL_HIT' || type === 'COMBO_HIT' || type === 'HIT_SELECT') {
+        if (this.movementController && this.combatVersion === 'modern') {
+          this.movementController.setControl('sprint', true);
         }
       }
 

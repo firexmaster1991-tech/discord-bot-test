@@ -1526,7 +1526,7 @@ class MinecraftBotManager extends EventEmitter {
       this.combatController.setProfile(this.selectedGamemode);
       this.combatController.preflight().then(check => {
         if (!check.success) {
-          const warningMsg = `❌ ${check.profile || this.selectedGamemode} profile cannot start: ${check.missing.join(', ')}`;
+          const warningMsg = `⚠️ ${check.profile || this.selectedGamemode} profile requirements not fully detected: ${check.missing.join(', ')}. Combat will still start; missing items may disable only the affected tactic.`;
           console.warn(`[PREFLIGHT] ${warningMsg}`);
           this.emit('profileWarning', {
             profile: check.profile || this.selectedGamemode,

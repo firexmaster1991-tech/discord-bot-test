@@ -47,7 +47,7 @@ class SwordProfile extends BaseCombatProfile {
     // Sword mode is strictly grounded combo PvP: no jumps, no jump resets,
     // and no automatic step-up jumps while chasing.
     if (this.movementController && typeof this.movementController.setCombatJumpingEnabled === 'function') {
-      this.movementController.setCombatJumpingEnabled(false);
+      this.movementController.setCombatJumpingEnabled(true, { autoJump: false });
     }
     this.recordMeaningfulAction('START');
   }
@@ -159,7 +159,7 @@ class SwordProfile extends BaseCombatProfile {
       } catch {}
     }
     if (this.movementController && typeof this.movementController.setCombatJumpingEnabled === 'function') {
-      this.movementController.setCombatJumpingEnabled(true);
+      this.movementController.setCombatJumpingEnabled(true, { autoJump: true });
     }
     super.stopCombat();
     this.comboCount = 0;
